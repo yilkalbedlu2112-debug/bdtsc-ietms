@@ -1,80 +1,62 @@
-<?php 
+<?php
+session_start();
 require_once '../includes/db.php';
-include '../includes/manager_header.php';
+include '../includes/assign_logic.php'; // ቅድም የሰራነው የጋራ መመደቢያ ኮድ
 
-// 1. ሴሽኑ መኖሩን ማረጋገጥ
-$dept_id = isset($_SESSION['dept_id']) ? $_SESSION['dept_id'] : null;
-$dept_name = "ያልታወቀ ክፍል";
+if ($_SESSION['role'] !== 'Department Manager') { header("Location: ../auth/login.php"); exit(); }
 
-// 2. የዲፓርትመንቱን ስም እና የብልሽት መጠኖችን ከዳታቤዝ ማምጣት
-if ($dept_id) {
-    // የዲፓርትመንት ስም
-    $stmt = $pdo->prepare("SELECT dept_name FROM departments WHERE id = ?");
-    $stmt->execute([$dept_id]);
-    $my_dept = $stmt->fetch();
-    if ($my_dept) { $dept_name = $my_dept['dept_name']; }
+// 1. በሲስተሙ ያሉትን ሁሉንም ቴክኒሻኖች አምጣ (ከማንኛውም ዲፓርትመንት ሊሆኑ ይችላሉ)
+$tech_stmt = $pdo->prepare("SELECT id, full_name FROM users WHERE role = 'Technician'");
+$tech_stmt->execute();
+$technicians = $tech_stmt->fetchAll();
 
-    // አዳዲስ (Pending) ጥያቄዎችን ለመቁጠር
-    $stmt_pending = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending'");
-    $stmt_pending->execute([$dept_id]);
-    $pending_count = $stmt_pending->fetchColumn();
-
-    // በጥገና ላይ ያሉ (In Progress) ለመቁጠር
-    $stmt_progress = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status = 'In Progress'");
-    $stmt_progress->execute([$dept_id]);
-    $progress_count = $stmt_progress->fetchColumn();
-
-    // የተጠናቀቁ (Completed) ለመቁጠር
-    $stmt_completed = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status = 'Completed'");
-    $stmt_completed->execute([$dept_id]);
-    $completed_count = $stmt_completed->fetchColumn();
-} else {
-    $pending_count = $progress_count = $completed_count = 0;
-}
+// 2. ከሁሉም ዲፓርትመንት Approved ተደርገው የመጡትን ጥያቄዎች ማምጣት
+$stmt = $pdo->prepare("
+    SELECT m.*, d.dept_name 
+    FROM maintenance_requests m 
+    JOIN departments d ON m.dept_id = d.id 
+    WHERE m.status = 'Approved'
+");
+$stmt->execute();
+$approved_requests = $stmt->fetchAll();
 ?>
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="card shadow-sm p-4 border-0" style="border-left: 5px solid #28687F !important;">
-            <h2 class="text-primary">የ<?php echo htmlspecialchars($dept_name); ?> ማናጀር የሥራ ገጽ</h2>
-            <p class="text-muted mb-0">እንኳን ደህና መጡ! በክፍልዎ ውስጥ ያሉ የጥገና ሁኔታዎች ዝርዝር ከዚህ በታች ቀርቧል።</p>
+<div class="container mt-4">
+    <h2 class="text-danger">የጥገና ክፍል ማናጀር ገጽ</h2>
+    <div class="card shadow mt-3">
+        <div class="card-header bg-dark text-white"><h5>ከዲፓርትመንቶች የመጡ የጥገና ጥያቄዎች</h5></div>
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ዲፓርትመንት</th>
+                        <th>ማሽን</th>
+                        <th>ብልሽት</th>
+                        <th>ቴክኒሻን መድብ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($approved_requests as $req): ?>
+                    <tr>
+                        <td><span class="badge bg-info text-dark"><?php echo $req['dept_name']; ?></span></td>
+                        <td><?php echo $req['machine_name']; ?></td>
+                        <td><?php echo $req['issue_description']; ?></td>
+                        <td>
+                            <form method="POST" class="d-flex gap-2">
+                                <input type="hidden" name="req_id" value="<?php echo $req['id']; ?>">
+                                <select name="tech_id" class="form-select form-select-sm" required>
+                                    <option value="">-- ባለሙያ ምረጥ --</option>
+                                    <?php foreach($technicians as $t): ?>
+                                        <option value="<?php echo $t['id']; ?>"><?php echo $t['full_name']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit" name="assign_now" class="btn btn-success btn-sm">መድብ</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
-
-<div class="row mt-4 text-center">
-    <div class="col-md-4 mb-3">
-        <div class="card bg-white shadow-sm p-3 border-0">
-            <h3 class="text-warning fw-bold"><?php echo $pending_count; ?></h3>
-            <p class="text-secondary mb-0">አዳዲስ ብልሽቶች</p>
-            <small class="text-muted">New Tasks</small>
-            <div class="mt-2">
-                <a href="view_requests.php" class="btn btn-sm btn-outline-warning">ዝርዝር እይ</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4 mb-3">
-        <div class="card bg-white shadow-sm p-3 border-0">
-            <h3 class="text-info fw-bold"><?php echo $progress_count; ?></h3>
-            <p class="text-secondary mb-0">በጥገና ላይ ያሉ</p>
-            <small class="text-muted">In Progress</small>
-            <div class="mt-2">
-                <a href="view_requests.php" class="btn btn-sm btn-outline-info">ዝርዝር እይ</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4 mb-3">
-        <div class="card bg-white shadow-sm p-3 border-0">
-            <h3 class="text-success fw-bold"><?php echo $completed_count; ?></h3>
-            <p class="text-secondary mb-0">የተጠናቀቁ</p>
-            <small class="text-muted">Completed</small>
-            <div class="mt-2">
-                <a href="view_requests.php" class="btn btn-sm btn-outline-success">ዝርዝር እይ</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<?php include '../includes/admin_footer.php'; ?>
