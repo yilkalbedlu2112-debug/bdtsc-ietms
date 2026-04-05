@@ -1,28 +1,31 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once '../includes/db.php';
 
 if (isset($_POST['login_btn'])) {
-    $email = $_POST['email'];
+    $email = trim($_POST['email']);
     $password = $_POST['password'];
 
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if ($user && $password == $user['password']) {
-        // ሴሽን መፍጠር
+    // 1. የይለፍ ቃል ማረጋገጫ
+    if ($user && password_verify($password, $user['password'])) {
+        
+            // 2. ሴሽን መፍጠር
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['full_name'] = $user['full_name'];
+        $_SESSION['dept_id'] = $user['dept_id'];
 
-        // ... ከሌሎቹ ሴሽኖች ጋር አብረህ ጨምረው
-$_SESSION['user_id'] = $user['id'];
-$_SESSION['role'] = $user['role'];
-$_SESSION['full_name'] = $user['full_name'];
-$_SESSION['dept_id'] = $user['dept_id']; // ይህ መስመር መኖሩን አረጋግጥ!
+        // 3. ድርጊቱን በ Audit Log መመዝገብ
+        log_action($pdo, $user['id'], "Login", "User logged into the system");
 
-        // እንደየ ሮሉ (Role) ወደ ተለያየ ፎልደር መላክ
+        // 4. እንደየ ስልጣኑ (Role) ወደ ተለያየ ፎልደር መምራት (Redirect)
         switch ($user['role']) {
             case 'General Manager':
                 header("Location: ../admin/dashboard.php");
@@ -36,12 +39,20 @@ $_SESSION['dept_id'] = $user['dept_id']; // ይህ መስመር መኖሩን አ
             case 'Supervisor':
                 header("Location: ../supervisor/dashboard.php");
                 break;
+            case 'Technician':
+                header("Location: ../technician/dashboard.php");
+                break;
             case 'Employee':
                 header("Location: ../employee/dashboard.php");
                 break;
+            default:
+                header("Location: ../auth/login.php?error=Unknown Role");
+                break;
         }
+        exit(); 
     } else {
-        echo "Invalid Email or Password!";
+        header("Location: login.php?error=Invalid Credentials");
+        exit();
     }
 }
 ?>

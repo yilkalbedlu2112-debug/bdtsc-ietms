@@ -19,4 +19,9 @@ try {
 } catch (\PDOException $e) {
      die("Database connection failed: " . $e->getMessage());
 }
+function log_action($pdo, $user_id, $action, $details) {
+    $ip = $_SERVER['REMOTE_ADDR']; // የኮምፒውተሩን አድራሻ ለመያዝ
+    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$user_id, $action, $details, $ip]);
+}
 ?>
