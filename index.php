@@ -1,9 +1,67 @@
 <?php
+// Error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Start session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (isset($_SESSION['role'])) {
-    header('Location: auth/login_process.php');
+
+try {
+    // Include database configuration
+    require_once 'includes/db.php';
+
+    // DEBUG: Show session status
+    echo "<div style='background: yellow; padding: 10px; margin: 10px;'>";
+    echo "<strong>DEBUG:</strong><br>";
+    if (isset($_SESSION['role'])) {
+        echo "Logged in as: " . $_SESSION['role'] . "<br>";
+        echo "Should redirect to dashboard...<br>";
+        echo "<a href='auth/logout.php'>Click here to logout</a><br>";
+    } else {
+        echo "Not logged in - should show home page<br>";
+    }
+    echo "</div>";
+
+    // Session check: If user is logged in, redirect to appropriate dashboard
+    if (isset($_SESSION['role'])) {
+        switch ($_SESSION['role']) {
+            case 'General Manager':
+                header('Location: admin/dashboard.php');
+                exit();
+            case 'Department Manager':
+                header('Location: manager/dashboard.php');
+                exit();
+            case 'Shift Leader':
+                header('Location: shift_leader/dashboard.php');
+                exit();
+            case 'Supervisor':
+                header('Location: supervisor/dashboard.php');
+                exit();
+            case 'Technician':
+                header('Location: technician/dashboard.php');
+                exit();
+            case 'Employee':
+                header('Location: employee/dashboard.php');
+                exit();
+            case 'Production and Technique Deputy General Manager':
+                header('Location: deputy_gm/dashboard.php');
+                exit();
+            default:
+                // Unknown role, redirect to login
+                header('Location: auth/login.php');
+                exit();
+        }
+    }
+
+} catch (Exception $e) {
+    // Error handling - show error instead of blank page
+    echo "<div style='padding: 20px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin: 20px;'>";
+    echo "<h3>Error:</h3>";
+    echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p><strong>File:</strong> " . htmlspecialchars($e->getFile()) . " on line " . $e->getLine() . "</p>";
+    echo "</div>";
     exit();
 }
 ?>
@@ -16,12 +74,22 @@ if (isset($_SESSION['role'])) {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
             color: #0f172a;
+        }
+        .amharic-text {
+            font-family: 'Noto Sans Ethiopic', 'Nyala', serif;
+            color: rgba(255, 255, 255, 0.7);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        .english-text {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
         }
         .nav-link {
             color: rgba(255,255,255,0.85) !important;
@@ -66,9 +134,16 @@ if (isset($_SESSION['role'])) {
             z-index: 2;
         }
         .hero h1 {
-            font-size: clamp(2.5rem, 4vw, 4rem);
+            font-size: clamp(2.2rem, 3.5vw, 3.5rem);
             font-weight: 700;
             line-height: 1.05;
+            margin-bottom: 1rem;
+        }
+        .hero h2 {
+            font-size: clamp(1.5rem, 2.5vw, 2rem);
+            font-weight: 500;
+            line-height: 1.1;
+            margin-bottom: 0.5rem;
         }
         .hero p {
             color: rgba(255,255,255,0.9);
@@ -94,7 +169,10 @@ if (isset($_SESSION['role'])) {
                 padding: 4.5rem 0;
             }
             .hero h1 {
-                font-size: 2.5rem;
+                font-size: 2.2rem;
+            }
+            .hero h2 {
+                font-size: 1.4rem;
             }
             .hero p {
                 max-width: 100%;
@@ -143,8 +221,9 @@ if (isset($_SESSION['role'])) {
             <a class="navbar-brand d-flex align-items-center" href="#">
                 <img src="assets/images/Bahr dar Textile0.png" alt="BDTSC Logo" width="54" height="54" class="me-3 rounded-circle border border-2 border-white" onerror="this.onerror=null;this.src='https://via.placeholder.com/54/0f172a/ffffff?text=BD';">
                 <div>
-                    <span class="d-block text-white fw-bold">BDTSC IETMS</span>
-                    <small class="text-white-50">Industry Maintenance System</small>
+                    <span class="d-block text-white fw-bold amharic-text" style="font-size: 0.9rem;">ቢዲቲኤስሲ አይኢቲኤምኤስ</span>
+                    <span class="d-block text-white fw-bold english-text" style="font-size: 1.1rem;">BDTSC-IETMS</span>
+                    <small class="text-white-50 english-text">Industrial Employee Task Management</small>
                 </div>
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -173,9 +252,9 @@ if (isset($_SESSION['role'])) {
         <div class="container hero-content">
             <div class="row align-items-center">
                 <div class="col-lg-7">
-                    <p class="text-uppercase text-info mb-3 fw-semibold">Bahir Dar Textile Share Company</p>
-                    <h1>Industrial Machine Maintenance & Task Management System</h1>
-                    <p class="lead mt-4">Optimizing production through real-time maintenance tracking and performance analytics for Bahir Dar Textile Share Company.</p>
+                    <h2 class="amharic-text mb-2">የባህር ዳር ጨርቃጨርቅ አክሲዮን ማህበር የኢንዱስትሪ ሰራተኞች የስራ አመራር ስርዓት</h2>
+                    <h1 class="english-text mb-3">Industrial Employee Task Management System of Bahir Dar Textile Share Company (BDTSC-IETMS)</h1>
+                    <p class="lead mt-4 english-text" style="text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);">Optimizing production through real-time maintenance tracking and performance analytics for Bahir Dar Textile Share Company.</p>
                     <a href="auth/login.php" class="btn btn-lg btn-info rounded-pill mt-4 px-5">Get Started</a>
                 </div>
                 <div class="col-lg-5 mt-5 mt-lg-0 text-center">
@@ -198,66 +277,53 @@ if (isset($_SESSION['role'])) {
             </div>
             <div class="row g-4">
                 <div class="col-md-6 col-xl-4">
-                    <div class="card feature-card p-4 h-100">
+                    <div class="feature-card p-4 h-100">
                         <div class="feature-icon bg-blue">
-                            <i class="bi bi-robot"></i>
+                            <i class="bi bi-tools"></i>
                         </div>
-                        <h5 class="fw-semibold">Automated Tasking</h5>
-                        <p class="text-muted">Assign work by role automatically so every worker receives the right job at the right time.</p>
+                        <h5 class="fw-bold mb-3">Maintenance Tracking</h5>
+                        <p class="text-muted mb-0">Real-time monitoring of equipment maintenance requests and technician assignments.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-xl-4">
-                    <div class="card feature-card p-4 h-100">
+                    <div class="feature-card p-4 h-100">
                         <div class="feature-icon bg-green">
                             <i class="bi bi-graph-up"></i>
                         </div>
-                        <h5 class="fw-semibold">Real-time Analytics</h5>
-                        <p class="text-muted">Monitor machine health and performance with live charts and meaningful KPIs.</p>
+                        <h5 class="fw-bold mb-3">Performance Analytics</h5>
+                        <p class="text-muted mb-0">Comprehensive reports and analytics for production efficiency and maintenance performance.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-xl-4">
-                    <div class="card feature-card p-4 h-100">
+                    <div class="feature-card p-4 h-100">
                         <div class="feature-icon bg-purple">
-                            <i class="bi bi-shield-lock"></i>
+                            <i class="bi bi-shield-check"></i>
                         </div>
-                        <h5 class="fw-semibold">Secure Audit Logs</h5>
-                        <p class="text-muted">Track every action in the system with secure, tamper-resistant logs.</p>
+                        <h5 class="fw-bold mb-3">Secure Audit Trail</h5>
+                        <p class="text-muted mb-0">Complete logging of all system activities with role-based access control.</p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="py-5 bg-white" id="contact">
+    <footer class="footer" id="contact">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-7">
-                    <h3 class="fw-bold">Contact Us</h3>
-                    <p class="text-muted">For setup, support, or a demo, reach out and we'll help Bahir Dar Textile connect operations with intelligence.</p>
-                    <ul class="list-unstyled text-muted mb-0">
-                        <li class="mb-2"><strong>Address:</strong> Bahir Dar Textile Share Company</li>
-                        <li class="mb-2"><strong>Email:</strong> support@bdtsc.com</li>
-                        <li><strong>Phone:</strong> +251 58 123 4567</li>
-                    </ul>
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="text-white mb-3">BDTSC IETMS</h5>
+                    <p>Industrial Employee Task Management System for Bahir Dar Textile Share Company</p>
+                    <p><i class="bi bi-geo-alt me-2"></i>Bahir Dar, Ethiopia</p>
                 </div>
-                <div class="col-lg-5 mt-4 mt-lg-0">
-                    <div class="card shadow-sm rounded-4 p-4 border-0">
-                        <h5 class="fw-semibold">Get started now</h5>
-                        <p class="text-muted">Login to begin managing maintenance tasks and workforce operations.</p>
-                        <a href="auth/login.php" class="btn btn-dark rounded-pill px-4">Login to System</a>
-                    </div>
+                <div class="col-md-6 text-md-end">
+                    <h5 class="text-white mb-3">Contact</h5>
+                    <p><i class="bi bi-envelope me-2"></i>info@bdtsc.et</p>
+                    <p><i class="bi bi-telephone me-2"></i>+251-XXX-XXXX</p>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <footer class="footer text-center text-white">
-        <div class="container">
-            <p class="mb-2">© 2026 Bahir Dar Textile Share Company. All rights reserved.</p>
-            <div>
-                <a href="#home" class="text-white text-decoration-none me-3">Home</a>
-                <a href="#about" class="text-white text-decoration-none me-3">About</a>
-                <a href="#contact" class="text-white text-decoration-none">Contact</a>
+            <hr class="my-4">
+            <div class="text-center">
+                <p class="mb-0">&copy; 2024 Bahir Dar Textile Share Company. All rights reserved.</p>
             </div>
         </div>
     </footer>
