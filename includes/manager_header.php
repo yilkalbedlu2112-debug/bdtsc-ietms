@@ -16,6 +16,7 @@ $logo_src = file_exists(__DIR__ . '/../assets/images/Bahr dar Textile0.png') ? '
     <title>Manager Dashboard | BDTSC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #eef2f7; font-family: 'Inter', sans-serif; }
         .amharic-font { font-family: 'Nyala', 'Impact', sans-serif; }
@@ -106,14 +107,16 @@ $logo_src = file_exists(__DIR__ . '/../assets/images/Bahr dar Textile0.png') ? '
     </div>
 </nav>
 <div class="sidebar d-flex flex-column align-items-center">
-    <a class="nav-link active" href="#" title="Dashboard"><i class="bi bi-speedometer2"></i></a>
+    <a class="nav-link active" href="dashboard.php" title="Dashboard"><i class="bi bi-speedometer2"></i></a>
+    <a class="nav-link" href="create_task.php" title="Create Task"><i class="bi bi-plus-circle"></i></a>
     <?php if (!isset($showMaintenanceMenu) || $showMaintenanceMenu): ?>
         <a class="nav-link" href="#maintenance" title="Maintenance"><i class="bi bi-tools"></i></a>
     <?php endif; ?>
     <?php if (!isset($showProductionMenu) || $showProductionMenu): ?>
         <a class="nav-link" href="#production" title="Production"><i class="bi bi-bar-chart-line"></i></a>
     <?php endif; ?>
-    <a class="nav-link" href="#reports" title="Reports"><i class="bi bi-graph-up"></i></a>
+    <a class="nav-link" href="generate_report.php" title="Reports"><i class="bi bi-file-earmark-pdf"></i></a>
+    <a class="nav-link" href="#reports" title="Analytics"><i class="bi bi-graph-up"></i></a>
     <a class="nav-link mt-auto" href="../auth/logout.php" title="Logout"><i class="bi bi-box-arrow-right"></i></a>
 </div>
 <div class="main-content">

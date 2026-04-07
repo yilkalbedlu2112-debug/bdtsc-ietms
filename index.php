@@ -100,7 +100,7 @@ try {
             transform: translateY(-1px);
         }
         .navbar-custom {
-            background: #0f172a;
+            background: #054ef7;
         }
         .btn-login {
             background: #38bdf8;
@@ -112,8 +112,8 @@ try {
         }
         .hero {
             position: relative;
-            background: linear-gradient(180deg, rgba(15,23,42,0.76) 0%, rgba(15,23,42,0.82) 100%),
-                        url('assets/images/factory_bg.png');
+            background: linear-gradient(360deg, rgba(7, 53, 159, 0.76) 0%, rgba(33, 67, 147, 0.82) 100%),
+                        url('assets/images/bkg.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -126,7 +126,7 @@ try {
             content: '';
             position: absolute;
             inset: 0;
-            background: rgba(15, 23, 42, 0.45);
+            background: rgba(46, 74, 140, 0.45);
             pointer-events: none;
         }
         .hero .hero-content {
@@ -135,7 +135,7 @@ try {
         }
         .hero h1 {
             font-size: clamp(2.2rem, 3.5vw, 3.5rem);
-            font-weight: 700;
+            font-weight: 200;
             line-height: 1.05;
             margin-bottom: 1rem;
         }
@@ -186,7 +186,7 @@ try {
         }
         .feature-card:hover {
             transform: translateY(-6px);
-            box-shadow: 0 32px 100px rgba(15, 23, 42, 0.14);
+            box-shadow: 0 32px 100px rgba(72, 123, 241, 0.14);
         }
         .feature-icon {
             width: 56px;
@@ -203,7 +203,7 @@ try {
         .feature-icon.bg-purple { background: #a855f7; color: white; }
         .footer {
             padding: 3rem 0;
-            background: #0f172a;
+            background: #123fa7;
             color: rgba(255,255,255,0.72);
         }
         .footer a {
@@ -219,9 +219,9 @@ try {
     <nav class="navbar navbar-expand-lg navbar-custom py-3">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="assets/images/Bahr dar Textile0.png" alt="BDTSC Logo" width="54" height="54" class="me-3 rounded-circle border border-2 border-white" onerror="this.onerror=null;this.src='https://via.placeholder.com/54/0f172a/ffffff?text=BD';">
+                <img src="assets/images/Yenesew Mulu.jpg" alt="BDTSC Logo" width="54" height="54" class="me-3 rounded-circle border border-2 border-white" onerror="this.onerror=null;this.src='https://via.placeholder.com/54/0f172a/ffffff?text=BD';">
                 <div>
-                    <span class="d-block text-white fw-bold amharic-text" style="font-size: 0.9rem;">ቢዲቲኤስሲ አይኢቲኤምኤስ</span>
+                    <span class="d-block text-white fw-bold amharic-text" style="font-size: 0.9rem;">የባ/ጨ/አ/ማ የኢ/ሠ/ሥራ አመራር/ሥርዓት</span>
                     <span class="d-block text-white fw-bold english-text" style="font-size: 1.1rem;">BDTSC-IETMS</span>
                     <small class="text-white-50 english-text">Industrial Employee Task Management</small>
                 </div>
@@ -318,7 +318,7 @@ try {
                 <div class="col-md-6 text-md-end">
                     <h5 class="text-white mb-3">Contact</h5>
                     <p><i class="bi bi-envelope me-2"></i>info@bdtsc.et</p>
-                    <p><i class="bi bi-telephone me-2"></i>+251-XXX-XXXX</p>
+                    <p><i class="bi bi-telephone me-2"></i>+251-920-297-671</p>
                 </div>
             </div>
             <hr class="my-4">
