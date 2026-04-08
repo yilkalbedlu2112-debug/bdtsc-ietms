@@ -1,44 +1,100 @@
 <?php 
 session_start();
 require_once '../includes/db.php';
-include '../includes/assign_logic.php'; // 1. ሎጂኩን እዚህ ጠራነው
 
-// 2. በዲፓርትመንቱ ያሉ ቴክኒሻኖችን ዝርዝር ማምጣት
-$tech_stmt = $pdo->prepare("SELECT id, full_name FROM users WHERE role = 'Technician' AND dept_id = ?");
-$tech_stmt->execute([$_SESSION['dept_id']]);
-$technicians = $tech_stmt->fetchAll();
+$dept_id = $_SESSION['dept_id'];
+
+// 1. ከማናጀር የመጡ አዳዲስ ስራዎችን ማምጣት
+$stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending'");
+$stmt->execute([$dept_id]);
+$new_requests = $stmt->fetchAll();
+
+// 2. የሁሉንም ስራዎች ሂደት መከታተል (Monitor Progress)
+$progress_stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE dept_id = ? AND status != 'Pending'");
+$progress_stmt->execute([$dept_id]);
+$all_tasks = $progress_stmt->fetchAll();
 ?>
 
-<div class="card shadow-sm mt-4">
-    <div class="card-header bg-primary text-white"><h5>ያልተመደቡ ጥያቄዎች (Manager View)</h5></div>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr><th>ማሽን</th><th>ብልሽት</th><th>ቴክኒሻን መድብ</th></tr>
-            </thead>
-            <tbody>
-                <?php 
-                $stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending'");
-                $stmt->execute([$_SESSION['dept_id']]);
-                while($row = $stmt->fetch()): ?>
-                <tr>
-                    <td><?php echo $row['machine_name']; ?></td>
-                    <td><?php echo $row['issue_description']; ?></td>
-                    <td>
-                        <form method="POST" class="d-flex gap-2">
-                            <input type="hidden" name="req_id" value="<?php echo $row['id']; ?>">
-                            <select name="tech_id" class="form-select form-select-sm" required>
-                                <option value="">-- ምረጥ --</option>
-                                <?php foreach($technicians as $t): ?>
-                                    <option value="<?php echo $t['id']; ?>"><?php echo $t['full_name']; ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="submit" name="assign_now" class="btn btn-success btn-sm">መድብ</button>
-                        </form>
-                    </td>
-                </tr>
-                <?php endwhile; ?>
-            </tbody>
-        </table>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shift Leader Control Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-briefcase-fill text-primary"></i> Shift Leader Dashboard</h2>
+        <span class="badge bg-info text-dark">Dept ID: <?php echo $dept_id; ?></span>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-white fw-bold">አዳዲስ የጥገና ጥያቄዎች (Decision Needed)</div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>ማሽን</th>
+                                <th>ብልሽት</th>
+                                <th>ክብደት (Severity)</th>
+                                <th>ውሳኔ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($new_requests as $req): ?>
+                            <tr>
+                                <td><?php echo $req['machine_name']; ?></td>
+                                <td><?php echo $req['issue_description']; ?></td>
+                                <form method="POST" action="process_decision.php">
+                                    <input type="hidden" name="req_id" value="<?php echo $req['id']; ?>">
+                                    <td>
+                                        <select name="severity" class="form-select form-select-sm">
+                                            <option value="Low">ቀላል (Low)</option>
+                                            <option value="High">ከባድ (High)</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button type="submit" name="to_engineering" class="btn btn-sm btn-outline-primary">ለEngineering ላክ</button>
+                                            <button type="submit" name="to_manager" class="btn btn-sm btn-outline-danger">ለማናጀር መልስ</button>
+                                        </div>
+                                    </td>
+                                </form>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">የስራዎች ሁኔታ (Real-time Status)</div>
+                <div class="list-group list-group-flush">
+                    <?php foreach($all_tasks as $task): ?>
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-0"><?php echo $task['machine_name']; ?></h6>
+                                <small class="text-muted">ተረካቢ፡ <?php echo $task['assigned_to_dept']; ?></small>
+                            </div>
+                            <span class="badge rounded-pill <?php echo ($task['status'] == 'In Progress') ? 'bg-warning' : 'bg-success'; ?>">
+                                <?php echo $task['status']; ?>
+                            </span>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+</body>
+</html>

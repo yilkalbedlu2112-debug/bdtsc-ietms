@@ -2,49 +2,91 @@
 session_start();
 require_once '../includes/db.php';
 
-if ($_SESSION['role'] !== 'Supervisor') { header("Location: ../auth/login.php"); exit(); }
-
-$my_dept = $_SESSION['dept_id'];
-
-// 1. ጥያቄውን ወደ ጥገና ክፍል ማስተላለፍ (Approve)
-if (isset($_POST['approve_btn'])) {
-    $req_id = $_POST['req_id'];
-    $stmt = $pdo->prepare("UPDATE maintenance_requests SET status = 'Approved' WHERE id = ?");
-    $stmt->execute([$req_id]);
-    echo "<div class='alert alert-success'>ጥያቄው ጸድቆ ወደ ጥገና ክፍል ተልኳል!</div>";
+// Security: Check if user is Supervisor
+if ($_SESSION['role'] !== 'Supervisor') {
+    header("Location: ../auth/login.php");
+    exit();
 }
 
-// 2. የራሱ ዲፓርትመንት የላካቸውን አዳዲስ ጥያቄዎች ብቻ ማምጣት
-$stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending Approval'");
-$stmt->execute([$my_dept]);
-$pending_list = $stmt->fetchAll();
+$dept_id = $_SESSION['dept_id'];
+
+// ለShift Leader እንዲመደቡ የሚጠባበቁ ዋና ዋና ስራዎችን ማምጣት
+$stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending'");
+$stmt->execute([$dept_id]);
+$pending_tasks = $stmt->fetchAll();
 ?>
 
-<div class="container mt-4">
-    <h3>የዲፓርትመንት ቁጥጥር ገጽ (Supervisor Dashboard)</h3>
-    <table class="table table-bordered shadow-sm mt-3">
-        <thead class="table-dark">
-            <tr>
-                <th>ማሽን</th>
-                <th>ብልሽት</th>
-                <th>ሪፖርት ያደረገው</th>
-                <th>እርምጃ</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach($pending_list as $row): ?>
-            <tr>
-                <td><?php echo $row['machine_name']; ?></td>
-                <td><?php echo $row['issue_description']; ?></td>
-                <td>ሰራተኛ ID: <?php echo $row['user_id']; ?></td>
-                <td>
-                    <form method="POST">
-                        <input type="hidden" name="req_id" value="<?php echo $row['id']; ?>">
-                        <button type="submit" name="approve_btn" class="btn btn-primary btn-sm">ወደ ጥገና ክፍል ላክ</button>
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <title>Supervisor Dashboard | BDTSC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+    <h2 class="mb-4 text-secondary"><i class="bi bi-person-badge"></i> የSupervisor ዳሽቦርድ</h2>
+
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-plus-circle"></i> አዲስ የጥገና ስራ መመዝገብ (Create Task)
+                </div>
+                <div class="card-body">
+                    <form action="save_task_supervisor.php" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">የማሽን ስም</label>
+                            <input type="text" name="machine_name" class="form-control" placeholder="ምሳሌ፡ Spinning Frame #2" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">የብልሽት አይነት (Instructions)</label>
+                            <textarea name="description" class="form-control" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-info w-100 text-white">ስራውን መዝግብ</button>
                     </form>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-megaphone"></i> ለShift Leader የሚመሩ ዋና ዋና ስራዎች
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>ማሽን</th>
+                                <th>ሁኔታ</th>
+                                <th>ተግባር</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($pending_tasks as $task): ?>
+                            <tr>
+                                <td><?php echo $task['machine_name']; ?></td>
+                                <td><span class="badge bg-warning text-dark">በጥበቃ ላይ</span></td>
+                                <td>
+                                    <form action="alert_shift_leader.php" method="POST">
+                                        <input type="hidden" name="req_id" value="<?php echo $task['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-bell"></i> ለShift Leader አሳውቅ
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+</body>
+</html>

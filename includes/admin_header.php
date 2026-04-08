@@ -144,6 +144,17 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
     </style>
 </head>
 <body>
+    <li class="nav-item">
+    <a href="../auth/change_password.php" class="nav-link text-white">
+        <i class="bi bi-key-fill me-2"></i> የይለፍ ቃል ቀይር
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="../auth/logout.php" class="nav-link text-danger">
+        <i class="bi bi-box-arrow-right me-2"></i> Logout
+    </a>
+</li>
 <div class="container-fluid p-0">
     <div class="row g-0">
         <div class="col-auto p-0 sidebar" id="sidebar">
@@ -168,6 +179,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
             <hr>
             <a href="../auth/logout.php" class="logout-link text-warning"><i class="bi bi-box-arrow-right"></i> Logout</a>
         </div>
+    
         <div class="col main-content">
             <button class="mobile-menu-toggle" onclick="toggleSidebar()">
                 <i class="bi bi-list"></i>
