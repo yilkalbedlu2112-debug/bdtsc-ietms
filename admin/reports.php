@@ -30,7 +30,12 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     exit;
 }
 
-include '../includes/admin_header.php';
+session_start();
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
+    header("Location: ../auth/login.php");
+    exit();
+}
+include '../includes/header_glass.php';
 
 $activity_log = $pdo->query("SELECT l.*, u.full_name, u.role FROM audit_logs l LEFT JOIN users u ON l.user_id = u.id ORDER BY l.created_at DESC LIMIT 20")->fetchAll();
 ?>
@@ -195,4 +200,4 @@ $activity_log = $pdo->query("SELECT l.*, u.full_name, u.role FROM audit_logs l L
     </div>
 </div>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

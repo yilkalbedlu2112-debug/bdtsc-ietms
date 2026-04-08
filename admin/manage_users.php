@@ -131,7 +131,7 @@ if (isset($_GET['edit_id'])) {
                             <label class="form-label">Role</label>
                             <select name="role" class="form-select" required>
                                 <option value="">Select Role</option>
-                                <?php foreach (['General Manager','Department Manager','Shift Leader','Supervisor','Technician','Employee'] as $role): ?>
+                                <?php foreach (['General Manager','Deputy General Manager','Engineering Manager','Department Manager','Shift Leader','Supervisor','Technician','Employee'] as $role): ?>
                                     <option value="<?php echo $role; ?>" <?php echo $edit_user && $edit_user['role'] === $role ? 'selected' : ''; ?>><?php echo $role; ?></option>
                                 <?php endforeach; ?>
                             </select>

@@ -1,5 +1,7 @@
 <?php
-// bdtsc-ietms/includes/admin_header.php
+// includes/admin_header.php
+require_once __DIR__ . '/lang.php';
+
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
     header("Location: ../auth/login.php");
@@ -7,21 +9,20 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?php echo $current_lang; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - BDTSC</title>
+    <title><?php echo __('dashboard'); ?> - BDTSC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/glassmorphism.css">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        body { font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif; }
         .sidebar {
             min-height: 100vh;
-            background: #0f172a;
-            color: white;
-            box-shadow: 4px 0 24px rgba(15, 23, 42, 0.25);
             position: fixed;
             width: 280px;
             z-index: 1000;
@@ -33,35 +34,18 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
             border-bottom: 1px solid rgba(255,255,255,0.08);
             background: rgba(255,255,255,0.03);
         }
-        .sidebar .brand h4 {
-            margin: 0;
-            font-weight: 700;
-            font-size: 1.25rem;
-            letter-spacing: 0.02em;
-        }
         .sidebar .profile-box {
             padding: 20px;
             text-align: center;
             border-bottom: 1px solid rgba(255,255,255,0.06);
         }
         .sidebar .profile-box img {
-            width: 100px;
-            height: 100px;
+            width: 90px;
+            height: 90px;
             object-fit: cover;
             border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
-        }
-        .sidebar .profile-box .name {
-            margin-top: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #f8fafc;
-        }
-        .sidebar .profile-box .role {
-            margin-top: 4px;
-            font-size: 0.85rem;
-            color: rgba(241, 245, 249, 0.7);
+            border: 2px solid rgba(255,255,255,0.5);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
         .sidebar a {
             color: rgba(241,245,249,0.85);
@@ -70,120 +54,43 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
             display: flex;
             align-items: center;
             transition: all 0.25s ease;
-            border-left: 4px solid transparent;
             font-weight: 500;
         }
         .sidebar a:hover {
-            background: rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.1);
             color: #ffffff;
-            border-left-color: #2563eb;
-            transform: translateX(2px);
         }
-        .sidebar a i {
-            margin-right: 14px;
-            width: 22px;
-            text-align: center;
-            font-size: 1.05rem;
-        }
-        .sidebar hr {
-            border-color: rgba(255,255,255,0.08);
-            margin: 10px 20px;
-        }
-        .sidebar .logout-link {
-            margin-top: auto;
-            padding-bottom: 22px;
-        }
-        .main-content {
-            margin-left: 280px;
-            background-color: #f8fafc;
-            min-height: 100vh;
-            padding: 28px;
-        }
-        .main-content h1, .main-content h2, .main-content h3, .main-content h4, .main-content h5 {
-            color: #0f172a;
-        }
-        @media (max-width: 992px) {
-            .sidebar {
-                width: 260px;
-            }
-            .main-content {
-                margin-left: 260px;
-            }
-        }
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                position: fixed;
-                height: 100%;
-            }
-            .sidebar.show {
-                transform: translateX(0);
-            }
-            .main-content {
-                margin-left: 0;
-                padding-top: 72px;
-            }
-            .mobile-menu-toggle {
-                display: block !important;
-                position: fixed;
-                top: 18px;
-                left: 18px;
-                z-index: 1100;
-                background: #0f172a;
-                color: white;
-                border: none;
-                border-radius: 12px;
-                padding: 10px 14px;
-                box-shadow: 0 10px 30px rgba(15,23,42,0.25);
-            }
-        }
-        .mobile-menu-toggle {
-            display: none;
-        }
+        .sidebar a i { margin-right: 14px; font-size: 1.1rem; }
+        .main-content { margin-left: 280px; padding: 28px; padding-top: 60px; min-height: 100vh; }
     </style>
 </head>
 <body>
-    <li class="nav-item">
-    <a href="../auth/change_password.php" class="nav-link text-white">
-        <i class="bi bi-key-fill me-2"></i> የይለፍ ቃል ቀይር
-    </a>
-</li>
 
-<li class="nav-item">
-    <a href="../auth/logout.php" class="nav-link text-danger">
-        <i class="bi bi-box-arrow-right me-2"></i> Logout
-    </a>
-</li>
+<div class="language-switcher">
+    <a href="?lang=en" class="<?php echo $current_lang == 'en' ? 'active' : ''; ?>">EN</a> |
+    <a href="?lang=am" class="<?php echo $current_lang == 'am' ? 'active' : ''; ?>">አማ</a>
+</div>
+
 <div class="container-fluid p-0">
     <div class="row g-0">
-        <div class="col-auto p-0 sidebar" id="sidebar">
+        <div class="col-auto p-0 sidebar glass-sidebar" id="sidebar">
             <div class="brand">
-                <h4><i class="bi bi-gear-fill me-2"></i>BDTSC IETMS</h4>
-                <small class="text-light opacity-75">Admin Panel</small>
+                <h5 class="mb-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>BDTSC IETMS</h5>
             </div>
-            <?php
-            $profile_image_path = __DIR__ . '/../assets/images/Bahr dar Textile.png';
-            $profile_image_src = file_exists($profile_image_path) ? '../assets/images/Bahr dar Textile.png' : 'https://via.placeholder.com/100/0f172a/ffffff?text=GM';
-            ?>
             <div class="profile-box">
-                <img src="<?php echo $profile_image_src; ?>" alt="Profile Photo" onerror="this.onerror=null;this.src='https://via.placeholder.com/100/0f172a/ffffff?text=GM';">
-                <div class="name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'General Manager'); ?></div>
-                <div class="role">General Manager</div>
+                <img src="../assets/images/Yenesew Mulu.jpg" alt="Profile" onerror="this.src='https://via.placeholder.com/90/0f172a/ffffff?text=GM';">
+                <div class="mt-3 fw-bold text-white"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'General Manager'); ?></div>
+                <div class="small opacity-75">General Manager</div>
             </div>
-            <a href="dashboard.php"><i class="bi bi-speedometer2"></i> Dashboard</a>
-            <a href="manage_users.php"><i class="bi bi-people-fill"></i> Manage Users</a>
-            <a href="manage_departments.php"><i class="bi bi-building"></i> Departments</a>
-            <a href="audit_trail.php"><i class="bi bi-shield-check"></i> Audit Trail</a>
-            <a href="reports.php"><i class="bi bi-graph-up"></i> Reports</a>
-            <hr>
-            <a href="../auth/logout.php" class="logout-link text-warning"><i class="bi bi-box-arrow-right"></i> Logout</a>
+            
+            <a href="dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+            <a href="manage_users.php"><i class="bi bi-people-fill"></i> <?php echo __('users'); ?></a>
+            <a href="manage_departments.php"><i class="bi bi-building"></i> <?php echo __('departments'); ?></a>
+            <a href="audit_trail.php"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
+            <a href="reports.php"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
+            <hr class="border-secondary mx-3">
+            <a href="../auth/change_password.php"><i class="bi bi-key"></i> <?php echo __('settings'); ?></a>
+            <a href="../auth/logout.php" class="text-warning"><i class="bi bi-box-arrow-right"></i> <?php echo __('logout'); ?></a>
         </div>
     
         <div class="col main-content">
-            <button class="mobile-menu-toggle" onclick="toggleSidebar()">
-                <i class="bi bi-list"></i>
-            </button>
-            <button class="mobile-menu-toggle" onclick="toggleSidebar()">
-                <i class="bi bi-list"></i>
-            </button>

@@ -15,17 +15,10 @@ $progress_stmt->execute([$dept_id]);
 $all_tasks = $progress_stmt->fetchAll();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Shift Leader Control Panel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-</head>
-<body class="bg-light">
+include '../includes/header_glass.php';
+?>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-briefcase-fill text-primary"></i> Shift Leader Dashboard</h2>
         <span class="badge bg-info text-dark">Dept ID: <?php echo $dept_id; ?></span>
@@ -95,6 +88,4 @@ $all_tasks = $progress_stmt->fetchAll();
         </div>
     </div>
 </div>
-
-</body>
-</html>
+<?php include '../includes/footer_glass.php'; ?>

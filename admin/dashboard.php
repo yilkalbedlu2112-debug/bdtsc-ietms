@@ -32,7 +32,7 @@ $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintena
 
 <div class="row">
     <div class="col-md-12">
-        <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="card glass-card border-0 rounded-4 mb-4" style="background: linear-gradient(135deg, rgba(102,126,234,0.85) 0%, rgba(118,75,162,0.85) 100%); color: white;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -56,7 +56,7 @@ $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintena
 
 <div class="row g-4 mb-4">
     <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="card glass-card border-0 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(102,126,234,0.8) 0%, rgba(118,75,162,0.8) 100%); color: white;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -78,7 +78,7 @@ $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintena
     </div>
 
     <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+        <div class="card glass-card border-0 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(240,147,251,0.8) 0%, rgba(245,87,108,0.8) 100%); color: white;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -100,7 +100,7 @@ $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintena
     </div>
 
     <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+        <div class="card glass-card border-0 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(79,172,254,0.8) 0%, rgba(0,242,254,0.8) 100%); color: white;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -122,7 +122,7 @@ $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintena
     </div>
 
     <div class="col-xl-3 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+        <div class="card glass-card border-0 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(250,112,154,0.8) 0%, rgba(254,225,64,0.8) 100%); color: white;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>

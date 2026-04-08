@@ -1,6 +1,11 @@
 <?php 
 require_once '../includes/db.php';
-include '../includes/admin_header.php';
+session_start();
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
+    header("Location: ../auth/login.php");
+    exit();
+}
+include '../includes/header_glass.php';
 
 // 1. መረጃውን ከዳታቤዝ ማምጣት (ከነ ሰራተኛው ስም ጋር)
 $query = "SELECT l.*, u.full_name, u.role 
@@ -129,4 +134,4 @@ document.getElementById('searchInput').addEventListener('keyup', function() {
 }
 </style>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

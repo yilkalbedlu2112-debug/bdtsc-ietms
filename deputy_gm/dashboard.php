@@ -1,134 +1,212 @@
 <?php
-require_once '../includes/db.php';
-include '../includes/deputy_gm_header.php';
-
-// Active Tasks: Count of tasks currently assigned to technicians (In Progress or Assigned)
-$active_tasks_count = $pdo->query("SELECT count(*) FROM maintenance_requests WHERE status IN ('In Progress', 'Assigned')")->fetchColumn();
-
-// Machine Status: Count damaged (pending/assigned) vs maintained (completed)
-$damaged_machines = $pdo->query("SELECT COUNT(DISTINCT machine_name) FROM maintenance_requests WHERE status IN ('Pending', 'In Progress', 'Assigned')")->fetchColumn();
-$maintained_machines = $pdo->query("SELECT COUNT(DISTINCT machine_name) FROM maintenance_requests WHERE status = 'Completed'")->fetchColumn();
-
-// Technician Workload: Count tasks per technician
-$technician_workload = $pdo->query("
-    SELECT u.full_name, COUNT(m.id) as task_count
-    FROM users u
-    LEFT JOIN maintenance_requests m ON u.id = m.assigned_to AND m.status != 'Completed'
-    WHERE u.role = 'Technician'
-    GROUP BY u.id, u.full_name
-    ORDER BY task_count DESC
-    LIMIT 10
-")->fetchAll();
-
+session_start();
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Deputy General Manager') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+include '../includes/header_glass.php';
 ?>
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h3 class="mb-1">Welcome, Deputy General Manager</h3>
-                        <p class="mb-0 opacity-75">Bahir Dar Textile Share Company - Production & Technical Management</p>
-                    </div>
-                    <div class="text-end">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-calendar-event fs-1 me-3 opacity-75"></i>
-                            <div>
-                                <small class="opacity-75">Today</small>
-                                <div class="fw-bold"><?php echo date('M d, Y'); ?></div>
-                            </div>
-                        </div>
-                    </div>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-dark fw-bold"><i class="bi bi-eye-fill text-primary me-2"></i>DGM Overwatch</h2>
+            <p class="text-muted mb-0">Production & Technique Live Monitoring</p>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-danger rounded-pill px-3 py-2 animate-pulse ps-4 pe-4 d-none" id="emergencyAlert">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="emergencyCount">0</span> Active Emergencies
+            </span>
+            <div class="small text-muted mt-2">Last Sync: <span id="lastSync">--:--:--</span></div>
+        </div>
+    </div>
+
+    <!-- Dual-View Tabs -->
+    <ul class="nav nav-pills mb-4 gap-2" id="dgmTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill px-4" id="production-tab" data-bs-toggle="pill" data-bs-target="#production-view" type="button" role="tab"><i class="bi bi-graph-up me-2"></i>View A: Production KPIs</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4" id="technique-tab" data-bs-toggle="pill" data-bs-target="#technique-view" type="button" role="tab"><i class="bi bi-wrench-adjustable me-2"></i>View B: Technique Oversight</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="dgmTabsContent">
+        <!-- View A: Production -->
+        <div class="tab-pane fade show active" id="production-view" role="tabpanel">
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card glass-card border-0 shadow-sm p-4">
+                <h5 class="fw-bold mb-4"><i class="bi bi-bar-chart-fill text-success me-2"></i>Production Output vs Technical Issues</h5>
+                <div style="height: 300px;">
+                    <canvas id="productionKpiChart"></canvas>
                 </div>
+            </div>
+        </div>
+    </div>
+
+        </div>
+
+        <!-- View B: Technique -->
+        <div class="tab-pane fade" id="technique-view" role="tabpanel">
+            <div class="card glass-card border-0 shadow-sm overflow-hidden">
+                <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-activity me-2"></i>Live Maintenance Stream (Engineering)</h6>
+            <div class="spinner-grow spinner-grow-sm text-info" role="status" id="liveIndicator">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th class="border-0">Priority</th>
+                        <th class="border-0">Asset / Machine</th>
+                        <th class="border-0">Department</th>
+                        <th class="border-0">Technician</th>
+                        <th class="border-0">Status</th>
+                        <th class="border-0">Registered</th>
+                    </tr>
+                </thead>
+                <tbody id="liveTasksBody">
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <div class="mt-2">Initializing Secure Uplink...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h6 class="text-uppercase fw-light opacity-75 mb-2">Active Tasks</h6>
-                        <h2 class="mb-0"><?php echo $active_tasks_count; ?></h2>
-                        <small class="opacity-75">Tasks in Progress</small>
-                    </div>
-                    <div class="bg-white bg-opacity-20 rounded-3 p-3">
-                        <i class="bi bi-tools fs-2"></i>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <a href="../admin/reports.php" class="text-white text-decoration-none small">
-                        <i class="bi bi-arrow-right me-1"></i>View Details
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h6 class="text-uppercase fw-light opacity-75 mb-2">Machine Status</h6>
-                        <h4 class="mb-1">Damaged: <?php echo $damaged_machines; ?></h4>
-                        <h4 class="mb-0">Maintained: <?php echo $maintained_machines; ?></h4>
-                        <small class="opacity-75">Current Status</small>
-                    </div>
-                    <div class="bg-white bg-opacity-20 rounded-3 p-3">
-                        <i class="bi bi-cpu fs-2"></i>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <a href="../admin/reports.php" class="text-white text-decoration-none small">
-                        <i class="bi bi-arrow-right me-1"></i>View Reports
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-4 col-md-6">
-        <div class="card border-0 shadow-sm rounded-4 h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h6 class="text-uppercase fw-light opacity-75 mb-2">Technician Workload</h6>
-                        <div class="mt-2">
-                            <?php foreach(array_slice($technician_workload, 0, 3) as $tech): ?>
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small><?php echo htmlspecialchars($tech['full_name']); ?></small>
-                                    <span class="badge bg-light text-dark"><?php echo $tech['task_count']; ?></span>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <div class="bg-white bg-opacity-20 rounded-3 p-3">
-                        <i class="bi bi-person-gear fs-2"></i>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <a href="../admin/manage_users.php" class="text-white text-decoration-none small">
-                        <i class="bi bi-arrow-right me-1"></i>Manage Technicians
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Additional content can be added here -->
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('show');
+let kpiChart;
+
+function initChart() {
+    const ctx = document.getElementById('productionKpiChart').getContext('2d');
+    kpiChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Spinning', 'Weaving', 'Processing', 'Garment'],
+            datasets: [
+                {
+                    label: 'Total Registered Issues',
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    data: [0, 0, 0, 0]
+                },
+                {
+                    label: 'Resolved (Output Unblocked)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    data: [0, 0, 0, 0]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
 }
+
+function getPriorityBadge(priority) {
+    if(priority === 'Emergency') return '<span class="badge bg-danger rounded-pill px-3 py-1 animate-pulse"><i class="bi bi-tsunami"></i> Emergency</span>';
+    if(priority === 'High') return '<span class="badge bg-warning text-dark rounded-pill px-3 py-1">High</span>';
+    return `<span class="badge bg-secondary rounded-pill px-3 py-1">${priority}</span>`;
+}
+
+function getStatusBadge(status) {
+    if(status === 'Completed') return '<span class="badge bg-success rounded-pill px-3 py-1"><i class="bi bi-check-circle"></i> Completed</span>';
+    if(status === 'Blocked') return '<span class="badge bg-danger rounded-pill px-3 py-1"><i class="bi bi-x-octagon"></i> Blocked</span>';
+    if(status === 'In-Progress') return '<span class="badge bg-info text-dark rounded-pill px-3 py-1"><i class="bi bi-arrow-repeat"></i> In Progress</span>';
+    return `<span class="badge bg-light text-dark border rounded-pill px-3 py-1">${status}</span>`;
+}
+
+function fetchLiveOverwatchData() {
+    fetch('fetch_live_data_ajax.php')
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) return;
+
+            // 1. Update Timestamp
+            document.getElementById('lastSync').textContent = data.timestamp;
+
+            // 2. Emergency Alert Logic
+            const alertBadge = document.getElementById('emergencyAlert');
+            if(data.emergency_count > 0) {
+                alertBadge.classList.remove('d-none');
+                document.getElementById('emergencyCount').textContent = data.emergency_count;
+            } else {
+                alertBadge.classList.add('d-none');
+            }
+
+            // 3. Update Chart
+            const rTotals = [];
+            const rCompleted = [];
+            ['Spinning', 'Weaving', 'Processing', 'Garment'].forEach(dept => {
+                if(data.stats[dept]) {
+                    rTotals.push(data.stats[dept].total);
+                    rCompleted.push(data.stats[dept].completed);
+                } else {
+                    rTotals.push(0); rCompleted.push(0);
+                }
+            });
+            kpiChart.data.datasets[0].data = rTotals;
+            kpiChart.data.datasets[1].data = rCompleted;
+            kpiChart.update();
+
+            // 4. Update Tasks Table
+            let tbody = '';
+            if(data.tasks.length === 0) {
+                tbody = '<tr><td colspan="6" class="text-center py-4 text-muted">No live operations detected.</td></tr>';
+            } else {
+                data.tasks.forEach(task => {
+                    let emergencyClass = task.priority === 'Emergency' && task.status !== 'Completed' ? 'bg-danger bg-opacity-10 fw-bold' : '';
+                    tbody += `
+                        <tr class="${emergencyClass}">
+                            <td>${getPriorityBadge(task.priority)}</td>
+                            <td><i class="bi bi-gear-wide-connected me-2 text-secondary"></i>${task.machine_name}</td>
+                            <td>${task.dept_name || 'N/A'}</td>
+                            <td>${task.technician || '<span class="text-muted small"><em>Unassigned</em></span>'}</td>
+                            <td>${getStatusBadge(task.status)}</td>
+                            <td class="small text-muted">${task.created_at}</td>
+                        </tr>
+                    `;
+                });
+            }
+            document.getElementById('liveTasksBody').innerHTML = tbody;
+        })
+        .catch(err => console.error("Overwatch Uplink Failed:", err));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initChart();
+    fetchLiveOverwatchData();
+    setInterval(fetchLiveOverwatchData, 10000); // Poll every 10 seconds
+});
 </script>
-</body>
-</html>
+
+<style>
+/* Emergency Pulse Animation */
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+.animate-pulse {
+    animation: pulseRed 2s infinite;
+}
+</style>
+
+<?php include '../includes/footer_glass.php'; ?>

@@ -46,8 +46,11 @@ $stmt = $pdo->prepare("SELECT u.*, d.dept_name FROM users u LEFT JOIN department
             case 'Employee':
                 header("Location: ../employee/dashboard.php");
                 break;
-            case 'Production and Technique Deputy General Manager':
+            case 'Deputy General Manager':
                 header("Location: ../deputy_gm/dashboard.php");
+                break;
+            case 'Engineering Manager':
+                header("Location: ../engineering/dashboard.php");
                 break;
             default:
                 header("Location: ../auth/login.php?error=Unknown Role");

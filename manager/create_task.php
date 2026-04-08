@@ -46,8 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// ማጣሪያ፡ ማናጀሩ ባለበት ዲፓርትመንት ስር ያሉ ሰራተኞችን (Employee/Technician) ብቻ ያመጣል
-$users_stmt = $pdo->prepare("SELECT id, full_name, role FROM users WHERE dept_id = ? AND status = 'Active' AND role IN ('Employee', 'Technician') ORDER BY full_name");
+// ማጣሪያ፡ የማናጀሩ ዲፓርትመንት አይነት ላይ በመመስረት የተለያዩ ሰራተኞችን ያመጣል
+$dept_type_stmt = $pdo->prepare("SELECT dept_type FROM departments WHERE id = ?");
+$dept_type_stmt->execute([$dept_id]);
+$dept_type = $dept_type_stmt->fetchColumn() ?: 'Support';
+
+if ($dept_type === 'Production') {
+    $roles = "'Shift Leader', 'Supervisor'";
+} else {
+    $roles = "'Employee', 'Technician'";
+}
+$users_stmt = $pdo->prepare("SELECT id, full_name, role FROM users WHERE dept_id = ? AND status = 'Active' AND role IN ($roles) ORDER BY full_name");
 $users_stmt->execute([$dept_id]);
 $users = $users_stmt->fetchAll();
 

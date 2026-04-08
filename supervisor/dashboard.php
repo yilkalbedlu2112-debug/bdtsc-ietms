@@ -16,17 +16,10 @@ $stmt->execute([$dept_id]);
 $pending_tasks = $stmt->fetchAll();
 ?>
 
-<!DOCTYPE html>
-<html lang="am">
-<head>
-    <meta charset="UTF-8">
-    <title>Supervisor Dashboard | BDTSC</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-</head>
-<body class="bg-light">
+include '../includes/header_glass.php';
+?>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <h2 class="mb-4 text-secondary"><i class="bi bi-person-badge"></i> የSupervisor ዳሽቦርድ</h2>
 
     <div class="row">
@@ -87,6 +80,4 @@ $pending_tasks = $stmt->fetchAll();
         </div>
     </div>
 </div>
-
-</body>
-</html>
+<?php include '../includes/footer_glass.php'; ?>

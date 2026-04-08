@@ -55,7 +55,7 @@ if (!$user) {
                 
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-secondary">New Password</label>
-                    <input type="password" name="password" class="form-control" placeholder="አዲስ ፓስወርድ" required minlength="6">
+                    <input type="password" name="new_password" class="form-control" placeholder="አዲስ ፓስወርድ" required minlength="6">
                 </div>
                 
                 <div class="mb-4">
@@ -64,7 +64,7 @@ if (!$user) {
                 </div>
 
                 <div class="d-grid gap-2">
-                    <button type="submit" name="update_password" class="btn btn-bdtsc">Update Password / ቀይር</button>
+                    <button type="submit" name="update_btn" class="btn btn-bdtsc">Update Password / ቀይር</button>
                 </div>
             </form>
         <?php endif; ?>

@@ -146,6 +146,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_pdf'])) {
     $tasks_stmt->execute($params);
     $tasks = $tasks_stmt->fetchAll();
 
+    $logo_path = __DIR__ . '/../assets/images/Bahr dar Textile.png';
+    $logo_data = '';
+    if (file_exists($logo_path)) {
+        $type = pathinfo($logo_path, PATHINFO_EXTENSION);
+        $data = file_get_contents($logo_path);
+        $logo_data = 'data:image/' . $type . ';base64,' . base64_encode($data);
+    }
+    
     // PDF HTML generation
     $html = '
     <html>
@@ -153,14 +161,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_pdf'])) {
         <style>
             body { font-family: Arial, sans-serif; }
             .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
+            .logo { max-height: 80px; margin-bottom: 10px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
             th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
             th { background-color: #f2f2f2; }
         </style>
     </head>
     <body>
-        <div class="header">
-            <h3>BDTSC - Task Report</h3>
+        <div class="header">';
+    if ($logo_data !== '') {
+        $html .= '<img src="' . $logo_data . '" class="logo" alt="BDTSC Logo"><br>';
+    }
+    $html .= '
+            <h3>Bahir Dar Textile Share Company (BDTSC)</h3>
+            <p>Task/Maintenance Internal Report</p>
             <p>Period: ' . $start_date . ' to ' . $end_date . ' | Dept: ' . $dept_name . '</p>
         </div>
         <table>
