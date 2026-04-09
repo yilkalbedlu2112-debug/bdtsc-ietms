@@ -219,7 +219,7 @@ try {
     <nav class="navbar navbar-expand-lg navbar-custom py-3">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="assets/images/Yenesew Mulu.jpg" alt="BDTSC Logo" width="54" height="54" class="me-3 rounded-circle border border-2 border-white" onerror="this.onerror=null;this.src='https://via.placeholder.com/54/0f172a/ffffff?text=BD';">
+                <img src="assets/images/bdtsc_logo.png" alt="BDTSC Logo" width="54" height="54" class="me-3 rounded-circle border border-2 border-white" onerror="this.onerror=null;this.src='https://via.placeholder.com/54/0f172a/ffffff?text=BD';">
                 <div>
                     <span class="d-block text-white fw-bold amharic-text" style="font-size: 0.9rem;">የባ/ጨ/አ/ማ የኢ/ሠ/ሥራ አመራር/ሥርዓት</span>
                     <span class="d-block text-white fw-bold english-text" style="font-size: 1.1rem;">BDTSC-IETMS</span>
@@ -253,8 +253,8 @@ try {
             <div class="row align-items-center">
                 <div class="col-lg-7">
                     <h2 class="amharic-text mb-2">የባህር ዳር ጨርቃጨርቅ አክሲዮን ማህበር የኢንዱስትሪ ሰራተኞች የስራ አመራር ስርዓት</h2>
-                    <h1 class="english-text mb-3">Industrial Employee Task Management System of Bahir Dar Textile Share Company (BDTSC-IETMS)</h1>
-                    <p class="lead mt-4 english-text" style="text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);">Optimizing production through real-time maintenance tracking and performance analytics for Bahir Dar Textile Share Company.</p>
+                    <h4 class="english-text mb-3">Industrial Employee Task Management System of Bahir Dar Textile Share Company (BDTSC-IETMS)</h1>
+                    <p class="lead mt-4 english-text" style="text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);">Optimizing production through real-time Task Management System and performance analytics for Bahir Dar Textile Share Company.</p>
                     <a href="auth/login.php" class="btn btn-lg btn-info rounded-pill mt-4 px-5">Get Started</a>
                 </div>
                 <div class="col-lg-5 mt-5 mt-lg-0 text-center">

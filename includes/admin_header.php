@@ -78,7 +78,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
                 <h5 class="mb-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>BDTSC IETMS</h5>
             </div>
             <div class="profile-box">
-                <img src="../assets/images/Yenesew Mulu.jpg" alt="Profile" onerror="this.src='https://via.placeholder.com/90/0f172a/ffffff?text=GM';">
+                <img src="../assets/images/bdtsc_logo.png" alt="Profile" onerror="this.src='https://via.placeholder.com/90/0f172a/ffffff?text=GM';">
                 <div class="mt-3 fw-bold text-white"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'General Manager'); ?></div>
                 <div class="small opacity-75">General Manager</div>
             </div>

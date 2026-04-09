@@ -26,7 +26,7 @@ include '../includes/header_glass.php';
         <div class="col-lg-5">
             <div class="card border-0 shadow-sm glass-card p-4 h-100">
                 <div class="text-center mb-4">
-                    <img src="../assets/images/user.png" class="rounded-circle shadow" width="120" height="120" style="object-fit: cover; border: 4px solid var(--bg-gray);">
+                    <img src="../assets/images/deputy Manager.jpg" class="rounded-circle shadow" width="120" height="120" style="object-fit: cover; border: 4px solid var(--bg-gray);">
                     <h4 class="fw-bold mt-3"><?php echo htmlspecialchars($user['full_name']); ?></h4>
                     <span class="badge bg-soft-primary text-primary"><?php echo htmlspecialchars($user['role']); ?></span>
                 </div>

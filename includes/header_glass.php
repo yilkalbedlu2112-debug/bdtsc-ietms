@@ -11,6 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 $role = $_SESSION['role'] ?? 'Employee';
 $full_name = htmlspecialchars($_SESSION['full_name'] ?? 'User');
 $base_url = '/bdtsc-ietms'; // Adjust if deploying in root
+$current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $current_lang; ?>">
@@ -83,39 +84,39 @@ $base_url = '/bdtsc-ietms'; // Adjust if deploying in root
                 <h5 class="mb-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>BDTSC IETMS</h5>
             </div>
             <div class="profile-box">
-                <img src="<?php echo $base_url; ?>/assets/images/user.png" alt="Profile" onerror="this.src='https://via.placeholder.com/90/0f172a/ffffff?text=User';">
+                <img src="<?php echo $base_url; ?>/assets/images/deputy Manager.jpg" alt="Profile" onerror="this.src='https://via.placeholder.com/90/0f172a/ffffff?text=User';">
                 <div class="mt-3 fw-bold text-white"><?php echo $full_name; ?></div>
                 <div class="small opacity-75"><?php echo htmlspecialchars($role); ?></div>
             </div>
             
             <?php if ($role === 'General Manager' || $role === 'Admin'): ?>
-                <a href="<?php echo $base_url; ?>/admin/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
-                <a href="<?php echo $base_url; ?>/admin/manage_users.php"><i class="bi bi-people-fill"></i> <?php echo __('users'); ?></a>
-                <a href="<?php echo $base_url; ?>/admin/manage_departments.php"><i class="bi bi-building"></i> <?php echo __('departments'); ?></a>
-                <a href="<?php echo $base_url; ?>/admin/audit_trail.php"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
-                <a href="<?php echo $base_url; ?>/admin/reports.php"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/manage_users.php" class="<?php echo $current_page == 'manage_users.php' ? 'active' : ''; ?>"><i class="bi bi-people-fill"></i> <?php echo __('users'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/manage_departments.php" class="<?php echo $current_page == 'manage_departments.php' ? 'active' : ''; ?>"><i class="bi bi-building"></i> <?php echo __('departments'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/audit_trail.php" class="<?php echo $current_page == 'audit_trail.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'active' : ''; ?>"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
             <?php elseif ($role === 'Department Manager'): ?>
-                <a href="<?php echo $base_url; ?>/manager/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
-                <a href="<?php echo $base_url; ?>/manager/create_task.php"><i class="bi bi-plus-square"></i> Create Task</a>
-                <a href="<?php echo $base_url; ?>/manager/generate_report.php"><i class="bi bi-file-earmark-pdf"></i> <?php echo __('reports'); ?></a>
+                <a href="<?php echo $base_url; ?>/manager/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"><i class="bi bi-plus-square"></i> Create Task</a>
+                <a href="<?php echo $base_url; ?>/manager/generate_report.php" class="<?php echo $current_page == 'generate_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-pdf"></i> <?php echo __('reports'); ?></a>
             <?php elseif ($role === 'Deputy General Manager'): ?>
-                <a href="<?php echo $base_url; ?>/deputy_gm/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
-                <a href="<?php echo $base_url; ?>/admin/audit_trail.php"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
-                <a href="<?php echo $base_url; ?>/admin/reports.php"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
+                <a href="<?php echo $base_url; ?>/deputy_gm/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/audit_trail.php" class="<?php echo $current_page == 'audit_trail.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'active' : ''; ?>"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
             <?php elseif ($role === 'Engineering Manager'): ?>
-                <a href="<?php echo $base_url; ?>/engineering/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/engineering/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
             <?php elseif ($role === 'Shift Leader'): ?>
-                <a href="<?php echo $base_url; ?>/shift_leader/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/shift_leader/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
             <?php elseif ($role === 'Supervisor'): ?>
-                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
             <?php elseif ($role === 'Technician'): ?>
-                <a href="<?php echo $base_url; ?>/technician/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/technician/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
             <?php else: ?>
-                <a href="<?php echo $base_url; ?>/employee/dashboard.php"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/employee/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
             <?php endif; ?>
             
             <hr class="border-secondary mx-3">
-            <a href="<?php echo $base_url; ?>/auth/profile.php"><i class="bi bi-person-circle"></i> My Profile</a>
+            <a href="<?php echo $base_url; ?>/auth/profile.php" class="<?php echo $current_page == 'profile.php' ? 'active' : ''; ?>"><i class="bi bi-person-circle"></i> My Profile</a>
             <a href="<?php echo $base_url; ?>/auth/logout.php" class="text-warning"><i class="bi bi-box-arrow-right"></i> <?php echo __('logout'); ?></a>
         </div>
     
