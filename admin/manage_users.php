@@ -75,14 +75,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $departments = $pdo->query("SELECT * FROM departments ORDER BY dept_name ASC")->fetchAll();
-$users = $pdo->query("SELECT u.*, d.dept_name FROM users u LEFT JOIN departments d ON u.dept_id = d.id ORDER BY u.id DESC")->fetchAll();
-
-$edit_user = null;
-if (isset($_GET['edit_id'])) {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->execute([(int)$_GET['edit_id']]);
-    $edit_user = $stmt->fetch();
-}
+// እዚህ ጋር ORDER BY የሚለውን ቀይረነዋል
+$users = $pdo->query("SELECT u.*, d.dept_name 
+                      FROM users u 
+                      LEFT JOIN departments d ON u.dept_id = d.id 
+                      ORDER BY d.dept_name ASC, 
+                      CASE 
+                        WHEN u.role = 'General Manager' THEN 1
+                        WHEN u.role = 'Deputy General Manager' THEN 2
+                        WHEN u.role = 'Engineering Manager' THEN 3
+                        WHEN u.role = 'Department Manager' THEN 4
+                        WHEN u.role = 'Supervisor' THEN 5
+                        WHEN u.role = 'Shift Leader' THEN 6
+                        WHEN u.role = 'Technician' THEN 7
+                        WHEN u.role = 'Employee' THEN 8
+                        ELSE 9 
+                      END ASC")->fetchAll();
+                      $edit_user = null;
 ?>
 
 <div class="container-fluid mt-4">
@@ -177,7 +186,24 @@ if (isset($_GET['edit_id'])) {
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($users as $u): ?>
+                            <?php 
+                            $current_dept_header = ""; 
+                            foreach ($users as $u): 
+                                // የዲፓርትመንት ስሙን መለየት
+                                $dept_display = !empty($u['dept_name']) ? $u['dept_name'] : 'System Administrators / Others';
+
+                                // አዲስ ዲፓርትመንት ሲመጣ ብቻ ርዕስ (Header) ያሳያል
+                                if ($current_dept_header !== $dept_display): 
+                                    $current_dept_header = $dept_display;
+                            ?>
+                                <tr class="table-light">
+                                    <td colspan="5" class="fw-bold py-2 text-primary" style="background-color: #f1f5f9;">
+                                        <i class="bi bi-building-fill me-2"></i> 
+                                        <?php echo htmlspecialchars($dept_display); ?>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+
                             <tr class="border-bottom border-light">
                                 <td>
                                     <div class="d-flex align-items-center">

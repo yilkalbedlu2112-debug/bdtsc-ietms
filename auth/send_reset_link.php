@@ -20,7 +20,7 @@ if (isset($_POST['reset_request'])) {
         $expires = date("U") + 1800; // ለ30 ደቂቃ (1800 ሰከንድ) ብቻ የሚሰራ
 
         $expires = date("Y-m-d H:i:s", strtotime('+30 minutes'));
-        $update = $pdo->prepare("UPDATE users SET reset_token = ?, token_expire = ? WHERE email = ?");
+        $update = $pdo->prepare("UPDATE users SET reset_token = ?, token_expiry = ? WHERE email = ?");
         $update->execute([$token, $expires, $email]);
 
         // 4. የ PHPMailer ቅንብር

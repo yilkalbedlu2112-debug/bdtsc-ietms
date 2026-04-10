@@ -1,6 +1,28 @@
 <?php
 require_once '../includes/db.php';
 
+// ማጣሪያዎቹን ከ URL (GET) መቀበል
+$dept_id = isset($_GET['dept_id']) && $_GET['dept_id'] !== '' ? (int)$_GET['dept_id'] : null;
+$period = isset($_GET['period']) ? $_GET['period'] : 'all';
+
+// 1. የጊዜ ማጣሪያ (Time Filter)
+$time_filter = "";
+if ($period === 'today') {
+    $time_filter = " AND DATE(created_at) = CURDATE()";
+} elseif ($period === 'week') {
+    $time_filter = " AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+} elseif ($period === 'month') {
+    $time_filter = " AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)";
+} elseif ($period === 'quarter') {
+    $time_filter = " AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)";
+} elseif ($period === 'half') {
+    $time_filter = " AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)";
+} elseif ($period === 'year') {
+    $time_filter = " AND created_at >= DATE_SUB(NOW(), INTERVAL 1 YEAR)";
+}
+
+// 2. የዲፓርትመንት ማጣሪያ (Department Filter)
+$dept_filter = $dept_id ? " AND dept_id = $dept_id" : "";
 $total_users = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 $total_departments = $pdo->query("SELECT COUNT(*) FROM departments")->fetchColumn();
 $total_requests = $pdo->query("SELECT COUNT(*) FROM maintenance_requests")->fetchColumn();
@@ -37,9 +59,13 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['General Manager'
 }
 include '../includes/header_glass.php';
 
-$activity_log = $pdo->query("SELECT l.*, u.full_name, u.role FROM audit_logs l LEFT JOIN users u ON l.user_id = u.id ORDER BY l.created_at DESC LIMIT 20")->fetchAll();
+// መስመር 66 አካባቢ የነበረውን በዚህ ተካ
+$activity_log_query = "SELECT l.*, u.full_name, u.role FROM audit_logs l 
+                       LEFT JOIN users u ON l.user_id = u.id 
+                       WHERE 1=1 " . str_replace('created_at', 'l.created_at', $time_filter) . " 
+                       ORDER BY l.created_at DESC LIMIT 20";
+$activity_log = $pdo->query($activity_log_query)->fetchAll();
 ?>
-
 <style>
     .report-action-buttons .btn {
         min-width: 160px;
@@ -100,7 +126,41 @@ $activity_log = $pdo->query("SELECT l.*, u.full_name, u.role FROM audit_logs l L
             <a href="?export=csv" class="btn btn-success"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export to CSV</a>
         </div>
     </div>
-
+     <div class="card shadow-sm border-0 mb-4 bg-light">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-muted">DEPARTMENT</label>
+                <select name="dept_id" class="form-select border-0 shadow-sm">
+                    <option value="">All Departments (Global)</option>
+                    <?php 
+                    $depts = $pdo->query("SELECT * FROM departments ORDER BY dept_name ASC")->fetchAll();
+                    foreach ($depts as $d): ?>
+                        <option value="<?= $d['id'] ?>" <?= $dept_id == $d['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($d['dept_name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-muted">TIME PERIOD</label>
+                <select name="period" class="form-select border-0 shadow-sm">
+                    <option value="all">Lifetime Data</option>
+                    <option value="today" <?= $period == 'today' ? 'selected' : '' ?>>Today</option>
+                    <option value="week" <?= $period == 'week' ? 'selected' : '' ?>>Past 7 Days</option>
+                    <option value="month" <?= $period == 'month' ? 'selected' : '' ?>>Past 30 Days</option>
+                    <option value="quarter" <?= $period == 'quarter' ? 'selected' : '' ?>>Quarterly (90 Days)</option>
+                    <option value="half" <?= $period == 'half' ? 'selected' : '' ?>>6 Months</option>
+                    <option value="year" <?= $period == 'year' ? 'selected' : '' ?>>Annually</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-dark w-100 shadow-sm"><i class="bi bi-filter"></i> Apply</button>
+                <a href="reports.php" class="btn btn-outline-secondary w-100 shadow-sm"><i class="bi bi-arrow-counterclockwise"></i> Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
     <div class="row g-4 mb-4">
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
