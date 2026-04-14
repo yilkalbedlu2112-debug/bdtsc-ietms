@@ -16,20 +16,20 @@ if (isset($_POST['reset_request'])) {
 
     if ($user) {
         // 2. ለደህንነት ሲባል ሚስጥራዊ Token እና የሚያበቃበትን ጊዜ (Expiry) መፍጠር
-        $token = bin2hex(random_bytes(32)); // ረጅም ሚስጥራዊ ጽሁፍ
-        $expires = date("U") + 1800; // ለ30 ደቂቃ (1800 ሰከንድ) ብቻ የሚሰራ
+        $token = bin2hex(random_bytes(32)); 
+// ለሙከራ እንዲመችህ ወደ 1 ሰዓት (3600 ሰከንድ) ከፍ አድርገው
+$expires = date("Y-m-d H:i:s", strtotime('+60 minutes')); 
 
-        $expires = date("Y-m-d H:i:s", strtotime('+30 minutes'));
-        $update = $pdo->prepare("UPDATE users SET reset_token = ?, token_expiry = ? WHERE email = ?");
-        $update->execute([$token, $expires, $email]);
-
+// reset_approved = 0 መጨመሩን እርግጠኛ ሁን
+$update = $pdo->prepare("UPDATE users SET reset_token = ?, token_expiry = ?, reset_approved = 0 WHERE email = ?");
+$update->execute([$token, $expires, $email]);
         // 4. የ PHPMailer ቅንብር
         $mail = new PHPMailer(true);
 
         try {
             // የሰርቨር ቅንብር
             $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
+            $mail->Host       = 'smtp.gmail.com'; 
             $mail->SMTPAuth   = true;
             $mail->Username   = 'yilkal893@gmail.com'; // ያንተ የ Gmail አድራሻ
             $mail->Password   = 'ftdobdvldnojvzlr';   // ከጎግል ያወጣኸው 16 ዲጂት App Password
@@ -42,7 +42,7 @@ if (isset($_POST['reset_request'])) {
 
             // የሊንኩ አድራሻ (ይህ ሊንክ ወደ 3ኛው ፋይል ይወስደዋል)
             // ፋይሉ በ htdocs/bdtsc-ietms/auth/ ውስጥ ስላለ ሊንኩ እንዲህ መሆን አለበት
-$reset_link = "http://localhost/bdtsc-ietms/auth/reset_password.php?token=" . $token;
+$reset_link = "http://192.168.137.1/bdtsc-ietms/auth/reset_password.php?token=" . $token;
 
             // የኢሜይሉ ይዘት (Content)
             $mail->isHTML(true);

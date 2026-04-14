@@ -2,7 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once '../includes/db.php';
-
+include '../includes/header_glass.php';
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Supervisor') {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();

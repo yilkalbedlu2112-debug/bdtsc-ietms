@@ -1,7 +1,6 @@
 <?php 
 require_once '../includes/db.php';
-include '../includes/manager_header.php';
-
+include '../includes/header_glass.php';
 $dept_id = $_SESSION['dept_id'];
 
 // የዲፓርትመንቱን ስም ለማወቅ
@@ -90,4 +89,4 @@ $requests = $stmt->fetchAll();
     </div>
 </div>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

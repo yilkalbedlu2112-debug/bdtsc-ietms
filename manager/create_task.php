@@ -2,107 +2,152 @@
 session_start();
 require_once '../includes/db.php';
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Department Manager') {
+// 1. የደህንነት ማጣሪያ (Access Control) - Managers and Supervisors
+$allowed_roles = ['Department Manager', 'Supervisor'];
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowed_roles)) {
     header("Location: ../auth/login.php");
     exit();
 }
 
-$dept_id = $_SESSION['dept_id'];
-$dept_name = $_SESSION['dept_name'] ?? 'Department';
-$full_name = $_SESSION['full_name'] ?? 'Manager';
-$user_id = $_SESSION['user_id'] ?? 0;
+// 2. አስፈላጊ መረጃዎችን ከሴሽን መውሰድ
+$dept_id   = $_SESSION['dept_id'];
+$user_id   = $_SESSION['user_id'];
+$user_role = $_SESSION['role'];
+$full_name = $_SESSION['full_name'];
+$dept_name = trim($_SESSION['dept_name'] ?? 'Department');
 
-// ለሁሉም ዲፓርትመንቶች የሚሆኑ የተግባር አይነቶች (Dynamic Task Types)
-$dynamic_task_types = [
-    'Production', 'Maintenance', 'Administrative', 'Quality', 'Financial', 
-    'ICT Support', 'Human Resources', 'Logistics', 'Security', 'General'
+$is_production = false; 
+
+$card_1 = "Total Assigned Tasks";
+$card_2 = "Pending Approvals";
+$card_3 = "Dept. Performance";
+$table_h = "Task / Project Name";
+$btn_extra_name = "New Task Request";
+$btn_extra_icon = "bi-plus-circle";
+$btn_extra_class = "btn-outline-primary";
+$target_modal = "#createTaskModal";
+$task_label = "SUBJECT / CASE TITLE";
+$task_type_options = [
+    'Report Preparation',
+    'Strategic Planning',
+    'Legal Review',
+    'Audit Inspection',
+    'Staffing/HR'
 ];
+$roles_filter = "'Officer', 'Clerk', 'Secretary', 'Auditor', 'Employee'";
 
-// Handle form submission
+$production_group = ['Spinning Department', 'Weaving Department', 'Processing Department', 'Garment Department'];
+$technical_quality_group = ['Engineering', 'Quality Assurance'];
+$finance_resource_group = ['Finance Department', 'Procurement / Property'];
+$admin_strategy_group = ['Human Resource (HR)', 'Planning', 'Strategy & Innovation', 'System Research & Development', 'Legal Service', 'Audit & Inspection'];
+$dept_key = $dept_name;
+
+if (in_array($dept_key, $production_group, true)) {
+    $is_production = true;
+    $task_label = 'MACHINE / STATION';
+    $task_type_options = ['Daily Production', 'Quality Check', 'Maintenance', 'Breakdown'];
+    $roles_filter = "'Shift Leader', 'Supervisor', 'Employee'";
+} elseif (in_array($dept_key, $technical_quality_group, true)) {
+    $is_production = true;
+    $task_label = 'ASSET / EQUIPMENT';
+    $task_type_options = ['Emergency Repair', 'Preventive Maintenance', 'Lab Analysis', 'Calibration'];
+    $roles_filter = "'Technician', 'Electrician', 'Lab Analyst', 'Employee'";
+} elseif (in_array($dept_key, $finance_resource_group, true)) {
+    $task_label = 'TRANSACTION / ITEM';
+    $task_type_options = ['Budget Approval', 'Payment Processing', 'Purchase Order', 'Inventory Audit'];
+    $roles_filter = "'Accountant', 'Purchaser', 'Store Keeper', 'Officer'";
+} else {
+    $task_label = 'SUBJECT / CASE TITLE';
+    $task_type_options = ['Report Preparation', 'Strategic Planning', 'Legal Review', 'Audit Inspection', 'Staffing/HR'];
+    $roles_filter = "'Officer', 'Clerk', 'Secretary', 'Auditor', 'Employee'";
+}
+// 5. ፎርሙ ሲላክ (Form Submission Handling)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $task_type = $_POST['task_type'] ?? 'General';
-    $title = trim($_POST['title'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $priority = $_POST['priority'] ?? 'Medium';
+    $title       = trim($_POST['title']);
+    $description = trim($_POST['description']);
+    $priority    = $_POST['priority'];
+    $task_type   = $_POST['task_type'];
+    $due_date    = $_POST['due_date'];
     $assigned_to = !empty($_POST['assigned_to']) ? $_POST['assigned_to'] : null;
-    $due_date = !empty($_POST['due_date']) ? $_POST['due_date'] : null;
 
-    if (empty($title) || empty($description)) {
-        $error = "Title and description are required.";
+    // Server-side Validation
+    if (empty($title) || empty($description) || empty($due_date)) {
+        $error = "እባክዎ ሁሉንም አስፈላጊ ቦታዎች ይሙሉ!";
+    } elseif ($due_date < date('Y-m-d\TH:i')) {
+        $error = "የመጨረሻ ቀን (Deadline) ካለፈ ሰዓት መሆን አይችልም!";
     } else {
-        // ሰራተኛ ከተመረጠ Status 'Assigned' ይሆናል ካልሆነ ግን 'Pending Approval'
-        $status = $assigned_to ? 'Assigned' : 'Pending Approval';
         try {
-            // ማስታወሻ፡ machine_name የሚለው በዳታቤዝህ 'Task Title' እንዲሆን ታስቦ ነው የተቀመጠው
-            $stmt = $pdo->prepare("INSERT INTO maintenance_requests (user_id, dept_id, assigned_to, machine_name, issue_description, priority, status, task_type, due_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$user_id, $dept_id, $assigned_to, $title, $description, $priority, $status, $task_type, $due_date]);
+            // Logic: ሱፐርቫይዘር ከፈጠረ ማኔጀር ማጽደቅ አለበት
+            if ($user_role === 'Department Manager') {
+                $status = $assigned_to ? 'Assigned' : 'Approved';
+            } else {
+                $status = 'Pending Approval';
+            }
 
-            $_SESSION['success'] = "Task created successfully!";
+            $sql = "INSERT INTO maintenance_requests 
+                    (user_id, dept_id, assigned_to, machine_name, issue_description, priority, status, task_type, due_date, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$user_id, $dept_id, $assigned_to, $title, $description, $priority, $status, $task_type, $due_date]);
+            
+            $new_task_id = $pdo->lastInsertId();
+
+            // 6. ኦዲት ሎግ መመዝገብ (UC-16)
+            $log_details = "$user_role ($full_name) created task #$new_task_id for $dept_name.";
+            log_action($pdo, $user_id, 'Task Created', $log_details);
+
+            $_SESSION['success'] = "ተግባሩ በተሳካ ሁኔታ ተመዝግቧል!";
             header("Location: dashboard.php");
             exit();
         } catch (Exception $e) {
-            $error = "Error creating task: " . $e->getMessage();
+            $error = "ስህተት አጋጥሟል፡ " . $e->getMessage();
         }
     }
 }
 
-// ማጣሪያ፡ የማናጀሩ ዲፓርትመንት አይነት ላይ በመመስረት የተለያዩ ሰራተኞችን ያመጣል
-$dept_type_stmt = $pdo->prepare("SELECT dept_type FROM departments WHERE id = ?");
-$dept_type_stmt->execute([$dept_id]);
-$dept_type = $dept_type_stmt->fetchColumn() ?: 'Support';
-
-if ($dept_type === 'Production') {
-    $roles = "'Shift Leader', 'Supervisor'";
-} else {
-    $roles = "'Employee', 'Technician'";
-}
-$users_stmt = $pdo->prepare("SELECT id, full_name, role FROM users WHERE dept_id = ? AND status = 'Active' AND role IN ($roles) ORDER BY full_name");
+// 7. ለተመዳቢ ሰራተኞች ዝርዝር (እንደየ ሚናው የሚወጣ)
+$users_stmt = $pdo->prepare("SELECT id, full_name, role FROM users WHERE dept_id = ? AND status = 'Active' AND role IN ($roles_filter) ORDER BY full_name");
 $users_stmt->execute([$dept_id]);
-$users = $users_stmt->fetchAll();
+$dept_staff = $users_stmt->fetchAll();
 
 include '../includes/header_glass.php';
 ?>
 
-<div class="container-fluid py-4">
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="page-title mb-1">BDTSC - <?php echo htmlspecialchars($dept_name); ?> Task Management</h1>
-                    <h5 class="text-muted">Manager: <?php echo htmlspecialchars($full_name); ?></h5>
+                    <h2 class="fw-bold text-primary"><?php echo $dept_name; ?> | Task Creation</h2>
+                    <p class="text-muted">Logged in as: <strong><?php echo $full_name; ?> (<?php echo $user_role; ?>)</strong></p>
                 </div>
-                <a href="dashboard.php" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Dashboard
-                </a>
+                <a href="dashboard.php" class="btn btn-outline-secondary">Back</a>
             </div>
 
             <?php if (isset($error)): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <?php echo htmlspecialchars($error); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                <div class="alert alert-danger"><?php echo $error; ?></div>
             <?php endif; ?>
 
-            <div class="card glass-card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Create New Departmental Task</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" id="taskForm">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <form method="POST">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="task_type" class="form-label">Task Type <span class="text-danger">*</span></label>
-                                <select class="form-select" id="task_type" name="task_type" required>
-                                    <?php foreach ($dynamic_task_types as $type): ?>
-                                        <option value="<?php echo $type; ?>" <?php echo ($type == 'General') ? 'selected' : ''; ?>>
-                                            <?php echo $type; ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                                <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-tag-fill me-1"></i> TASK TYPE / CATEGORY
+                            </label>
+                            <select name="task_type" class="form-select bg-light border-0 py-2" required>
+                                <option value="">-- Select Task Type --</option>
+                                <?php foreach ($task_type_options as $option): ?>
+                                    <option value="<?php echo htmlspecialchars($option); ?>"><?php echo htmlspecialchars($option); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                             <div class="col-md-6 mb-3">
-                                <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
-                                <select class="form-select" id="priority" name="priority" required>
-                                    <option value="Low">Low</option>
-                                    <option value="Medium" selected>Medium</option>
+                                <label class="form-label">Priority Level</label>
+                                <select name="priority" class="form-select" required>
+                                    <option value="Normal">Normal</option>
                                     <option value="High">High</option>
                                     <option value="Emergency">Emergency</option>
                                 </select>
@@ -110,61 +155,47 @@ include '../includes/header_glass.php';
                         </div>
 
                         <div class="mb-3">
-                            <label for="title" class="form-label">Task Title / Subject <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="title" name="title" required maxlength="100" placeholder="Enter task title">
+                            <label class="form-label text-muted small fw-bold"><?php echo $task_label; ?></label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g., Daily Spinning Report" required>
                         </div>
 
                         <div class="mb-3">
-                            <label for="description" class="form-label">Task Description <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="description" name="description" rows="4" required
-                                placeholder="Describe the task details here..."></textarea>
+                            <label class="form-label">Technical Instructions / Description</label>
+                            <textarea name="description" class="form-control" rows="4" required placeholder="ዝርዝር የስራ መመሪያ እዚህ ይጥቀሱ..."></textarea>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="assigned_to" class="form-label">Assign To (Staff in <?php echo htmlspecialchars($dept_name); ?>)</label>
-                                <select class="form-select" id="assigned_to" name="assigned_to">
-                                    <option value="">Leave Unassigned (Pending)</option>
-                                    <?php foreach ($users as $user): ?>
-                                        <option value="<?php echo $user['id']; ?>">
-                                            <?php echo htmlspecialchars($user['full_name'] . ' (' . $user['role'] . ')'); ?>
+                                <label class="form-label">Assign to Staff (Optional)</label>
+                                <select name="assigned_to" class="form-select">
+                                    <option value="">-- Select Employee --</option>
+                                    <?php foreach ($dept_staff as $staff): ?>
+                                        <option value="<?php echo $staff['id']; ?>">
+                                            <?php echo $staff['full_name'] . " (" . $staff['role'] . ")"; ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="due_date" class="form-label">Deadline (Due Date & Time)</label>
-                                <input type="datetime-local" class="form-control" id="due_date" name="due_date">
+                                <label class="form-label">Deadline</label>
+                                <input type="datetime-local" name="due_date" class="form-control" id="due_date" required>
                             </div>
                         </div>
 
-                        <div class="d-flex gap-2 mt-3">
-                            <button type="submit" class="btn btn-primary px-4">
-                                <i class="bi bi-check-circle"></i> Create Task
-                            </button>
-                            <button type="reset" class="btn btn-secondary px-4">
-                                <i class="bi bi-x-circle"></i> Reset
-                            </button>
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">Create & Log Task</button>
                         </div>
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
 </div>
 
 <script>
-// 14ቱም ዲፓርትመንት ሲጠቀሙበት እንደ ምርጫቸው ጽሁፉ እንዲቀየር
-document.getElementById('task_type').addEventListener('change', function() {
-    const type = this.value;
-    const desc = document.getElementById('description');
-    desc.placeholder = "Enter details for " + type + " task...";
-});
-
-// የጊዜ ገደቡ ካሁኑ ሰዓት በፊት እንዳይሆን መቆጣጠሪያ
-document.addEventListener('DOMContentLoaded', function() {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    document.getElementById('due_date').min = now.toISOString().slice(0, 16);
-});
+    // የመጨረሻ ቀን ከአሁኑ ሰዓት በፊት እንዳይሆን መቆለፊያ
+    const now = new Date().toISOString().slice(0, 16);
+    document.getElementById('due_date').min = now;
 </script>
 
 <?php include '../includes/footer_glass.php'; ?>

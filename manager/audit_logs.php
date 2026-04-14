@@ -198,4 +198,4 @@ include '../includes/header_glass.php';
     }
 </style>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

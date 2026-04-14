@@ -212,4 +212,4 @@ include '../includes/manager_header.php';
     });
 </script>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

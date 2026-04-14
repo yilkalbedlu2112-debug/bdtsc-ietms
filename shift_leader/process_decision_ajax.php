@@ -7,7 +7,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Shift Leader') {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
-
+include '../includes/header_glass.php';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['req_id'])) {
     $req_id = $_POST['req_id'];
     $severity = $_POST['severity'] ?? 'Low';

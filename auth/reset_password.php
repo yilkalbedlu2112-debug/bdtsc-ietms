@@ -8,14 +8,16 @@ if (empty($token)) {
     die("ሊንኩ የተሳሳተ ነው። እባክዎ እንደገና ከኢሜይልዎ ያረጋግጡ።");
 }
 
-// 1. Token-ኑ ትክክል መሆኑን እና ጊዜው አለማለፉን ማረጋገጥ
-// ማሳሰቢያ፡ ዳታቤዝህ ላይ 'token_expiry' ከሆነ ስሙ እዚህ ጋር እንዳትረሳው
-$stmt = $pdo->prepare("SELECT * FROM users WHERE reset_token = ?");
+$stmt = $pdo->prepare("SELECT * FROM users WHERE reset_token = ? AND token_expiry > NOW() AND reset_approved = 1");
 $stmt->execute([$token]);
 $user = $stmt->fetch();
 
 if (!$user) {
-    $error = "ሊንኩ ጊዜው አልፎበታል (ከ30 ደቂቃ በላይ ሆኖታል) ወይም ቀደም ብሎ ጥቅም ላይ ውሏል። እባክዎ እንደገና ይጠይቁ።";
+    // ተጠቃሚው ዳታቤዝ ውስጥ ካልተገኘ ወይም መስፈርቶቹን ካላሟላ
+    $error = "ሊንኩ ሊሰራ አልቻለም። ምክንያቱ ከሚከተሉት አንዱ ሊሆን ይችላል፡ 
+              1. ሊንኩ የተሳሳተ ነው 
+              2. የ30 ደቂቃ የጊዜ ገደቡ አልፏል 
+              3. አስተዳዳሪው (Admin) ጥያቄውን ገና አላጸደቀውም።";
 }
 ?>
 

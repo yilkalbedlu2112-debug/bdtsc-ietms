@@ -1,6 +1,7 @@
 <?php
 // bdtsc-ietms/includes/db.php
-
+// 1. የኢትዮጵያን ሰዓት በቋሚነት ለመጠቀም
+date_default_timezone_set('Africa/Addis_Ababa');
 $host = 'localhost';
 $db   = 'bdtsc_db'; // በ phpMyAdmin የፈጠርከው ዳታቤዝ ስም
 $user = 'root';

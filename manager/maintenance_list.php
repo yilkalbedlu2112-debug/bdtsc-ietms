@@ -36,7 +36,7 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $tasks = $stmt->fetchAll();
 
-include '../includes/manager_header.php';
+include '../includes/header_glass.php';
 ?>
 
 <div class="container-fluid py-4">
@@ -132,4 +132,4 @@ include '../includes/manager_header.php';
     </div>
 </div>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

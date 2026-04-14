@@ -106,25 +106,27 @@
 </head>
 <body>
 
-<div class="container d-flex justify-content-center px-3">
-    <div class="login-card">
-        <div class="text-center mb-4">
-            <div class="brand-icon">
-                <i class="bi bi-person-badge-fill"></i>
-            </div>
-            <h3 class="fw-bold mb-1" style="color: var(--bdtsc-color);">BDTSC - IETMS</h3>
-            <p class="text-muted small">የኢንዱስትሪ ሰራተኞች ስራ መቆጣጠሪያ ሲስተም</p>
-        </div>
+<div class="login-card">
+    <div class="text-end mb-2">
+        <a href="?lang=en" class="badge text-decoration-none border text-dark">EN</a>
+        <a href="?lang=am" class="badge text-decoration-none border text-dark">አማ</a>
+    </div>
+
+    <div class="text-center mb-4">
+        <img src="../assets/images/bdtsc_logo.png" alt="BDTSC Logo" style="width: 70px; margin-bottom: 15px;">
+        <h3 class="fw-bold mb-1" style="color: var(--bdtsc-color);">BDTSC - IETMS</h3>
+        <p class="text-muted small">Industrial workers work control system</p>
+    </div>
 
         <?php if (isset($_GET['success'])): ?>
-            <div class="alert alert-success py-2 mb-4 rounded-3 small border-0">
+            <div class="alert alert-success py-2 mb-4 rounded-3 small border-0 shadow-sm">
                 <i class="bi bi-check-circle-fill me-2"></i>
                 <?php echo htmlspecialchars($_GET['success']); ?>
             </div>
         <?php endif; ?>
 
         <?php if (isset($_GET['error'])): ?>
-            <div class="alert alert-danger py-2 mb-4 rounded-3 small border-0">
+            <div class="alert alert-danger py-2 mb-4 rounded-3 small border-0 shadow-sm">
                 <i class="bi bi-exclamation-circle-fill me-2"></i>
                 <?php echo htmlspecialchars($_GET['error']); ?>
             </div>

@@ -12,18 +12,6 @@ try {
     // Include database configuration
     require_once 'includes/db.php';
 
-    // DEBUG: Show session status
-    echo "<div style='background: yellow; padding: 10px; margin: 10px;'>";
-    echo "<strong>DEBUG:</strong><br>";
-    if (isset($_SESSION['role'])) {
-        echo "Logged in as: " . $_SESSION['role'] . "<br>";
-        echo "Should redirect to dashboard...<br>";
-        echo "<a href='auth/logout.php'>Click here to logout</a><br>";
-    } else {
-        echo "Not logged in - should show home page<br>";
-    }
-    echo "</div>";
-
     // Session check: If user is logged in, redirect to appropriate dashboard
     if (isset($_SESSION['role'])) {
         switch ($_SESSION['role']) {
@@ -100,7 +88,7 @@ try {
             transform: translateY(-1px);
         }
         .navbar-custom {
-            background: #054ef7;
+            background: #093291ff;
         }
         .btn-login {
             background: #38bdf8;
@@ -177,6 +165,13 @@ try {
             .hero p {
                 max-width: 100%;
             }
+            /* ስልክ ላይ አርማው እና ጽሁፉ እንዳይጨናነቁ */
+            .navbar-brand div span {
+                font-size: 0.75rem !important;
+            }
+            .navbar-brand div .english-text {
+                font-size: 0.9rem !important;
+            }
         }
         .feature-card {
             border: none;
@@ -219,15 +214,15 @@ try {
     <nav class="navbar navbar-expand-lg navbar-custom py-3">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="#">
-                <img src="assets/images/bdtsc_logo.png" alt="BDTSC Logo" width="54" height="54" class="me-3 rounded-circle border border-2 border-white" onerror="this.onerror=null;this.src='https://via.placeholder.com/54/0f172a/ffffff?text=BD';">
+                <img src="assets/images/bdtsc_logo.png" alt="BDTSC Logo" width="54" height="54" class="me-2 me-sm-3 rounded-circle border border-2 border-white" onerror="this.onerror=null;this.src='https://via.placeholder.com/54/0f172a/ffffff?text=BD';">
                 <div>
                     <span class="d-block text-white fw-bold amharic-text" style="font-size: 0.9rem;">የባ/ጨ/አ/ማ የኢ/ሠ/ሥራ አመራር/ሥርዓት</span>
                     <span class="d-block text-white fw-bold english-text" style="font-size: 1.1rem;">BDTSC-IETMS</span>
-                    <small class="text-white-50 english-text">Industrial Employee Task Management</small>
+                    <small class="text-white-50 english-text d-none d-sm-block">Industrial Employee Task Management</small>
                 </div>
             </a>
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
+            <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon" style="filter: invert(1);"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
@@ -240,8 +235,8 @@ try {
                     <li class="nav-item px-2">
                         <a class="nav-link" href="#contact">Contact</a>
                     </li>
-                    <li class="nav-item px-2">
-                        <a class="btn btn-login rounded-pill px-4 py-2" href="auth/login.php">Login</a>
+                    <li class="nav-item px-2 mt-3 mt-lg-0">
+                        <a class="btn btn-login rounded-pill px-4 py-2 w-100 w-lg-auto" href="auth/login.php">Login</a>
                     </li>
                 </ul>
             </div>
@@ -250,16 +245,18 @@ try {
 
     <section class="hero" id="home">
         <div class="container hero-content">
-            <div class="row align-items-center">
-                <div class="col-lg-7">
+            <div class="row align-items-center g-4">
+                <div class="col-lg-7 text-center text-lg-start">
                     <h2 class="amharic-text mb-2">የባህር ዳር ጨርቃጨርቅ አክሲዮን ማህበር የኢንዱስትሪ ሰራተኞች የስራ አመራር ስርዓት</h2>
-                    <h4 class="english-text mb-3">Industrial Employee Task Management System of Bahir Dar Textile Share Company (BDTSC-IETMS)</h1>
-                    <p class="lead mt-4 english-text" style="text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);">Optimizing production through real-time Task Management System and performance analytics for Bahir Dar Textile Share Company.</p>
-                    <a href="auth/login.php" class="btn btn-lg btn-info rounded-pill mt-4 px-5">Get Started</a>
+                    <h4 class="english-text mb-3">Industrial Employee Task Management System of Bahir Dar Textile Share Company (BDTSC-IETMS)</h4>
+                    <p class="lead mt-4 english-text mx-auto mx-lg-0" style="text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);">Optimizing production through real-time Task Management System and performance analytics for Bahir Dar Textile Share Company.</p>
+                    <div class="mt-4">
+                        <a href="auth/login.php" class="btn btn-lg btn-info rounded-pill px-5">Get Started</a>
+                    </div>
                 </div>
                 <div class="col-lg-5 mt-5 mt-lg-0 text-center">
-                    <div class="p-4 rounded-4" style="background: rgba(255,255,255,0.08); backdrop-filter: blur(10px);">
-                        <img src="assets/images/Bahr dar Textile0.png" alt="Hero Image" class="img-fluid rounded-4 shadow" style="max-height: 360px;" onerror="this.onerror=null;this.src='https://via.placeholder.com/420x320/0f172a/ffffff?text=BDTSC';">
+                    <div class="p-3 p-md-4 rounded-4" style="background: rgba(255,255,255,0.08); backdrop-filter: blur(10px);">
+                        <img src="assets/images/Bahr dar Textile0.png" alt="Hero Image" class="img-fluid rounded-4 shadow" style="max-height: 360px; width: 100%; object-fit: cover;" onerror="this.onerror=null;this.src='https://via.placeholder.com/420x320/0f172a/ffffff?text=BDTSC';">
                     </div>
                 </div>
             </div>
@@ -276,7 +273,7 @@ try {
                 </div>
             </div>
             <div class="row g-4">
-                <div class="col-md-6 col-xl-4">
+                <div class="col-12 col-md-6 col-xl-4">
                     <div class="feature-card p-4 h-100">
                         <div class="feature-icon bg-blue">
                             <i class="bi bi-tools"></i>
@@ -285,7 +282,7 @@ try {
                         <p class="text-muted mb-0">Real-time monitoring of equipment maintenance requests and technician assignments.</p>
                     </div>
                 </div>
-                <div class="col-md-6 col-xl-4">
+                <div class="col-12 col-md-6 col-xl-4">
                     <div class="feature-card p-4 h-100">
                         <div class="feature-icon bg-green">
                             <i class="bi bi-graph-up"></i>
@@ -294,7 +291,7 @@ try {
                         <p class="text-muted mb-0">Comprehensive reports and analytics for production efficiency and maintenance performance.</p>
                     </div>
                 </div>
-                <div class="col-md-6 col-xl-4">
+                <div class="col-12 col-md-6 col-xl-4">
                     <div class="feature-card p-4 h-100">
                         <div class="feature-icon bg-purple">
                             <i class="bi bi-shield-check"></i>
@@ -307,15 +304,36 @@ try {
         </div>
     </section>
 
+    <section class="py-5 bg-white">
+        <div class="container">
+            <div class="row g-4 g-lg-5 align-items-stretch">
+                <div class="col-12 col-lg-6">
+                    <div class="p-4 h-100 rounded-4 shadow-sm border-start border-4 border-info bg-light">
+                        <h3 class="fw-bold mb-3 amharic-text" style="color: #123fa7;">ራዕይ (Vision)</h3>
+                        <p class="text-muted fs-5 italic">"በ2030 በምስራቅ አፍሪካ ተመራጭና ተወዳዳሪ የጨርቃጨርቅ ምርት አቅራቢ መሆን።"</p>
+                        <p class="text-secondary small english-text" style="color: #64748b !important;">"To be a preferred and competitive textile product provider in East Africa by 2030."</p>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-6">
+                    <div class="p-4 h-100 rounded-4 shadow-sm border-start border-4 border-primary bg-light">
+                        <h3 class="fw-bold mb-3 amharic-text" style="color: #123fa7;">ተልዕኮ (Mission)</h3>
+                        <p class="text-muted fs-5">"ጥራቱን የጠበቀ ምርት በማቅረብ፣ የቴክኖሎጂ አጠቃቀማችንን በማሳደግ እና የሰራተኞቻችንን ብቃት በማጎልበት የደንበኞቻችንን ፍላጎት ማርካት።"</p>
+                        <p class="text-secondary small english-text" style="color: #64748b !important;">"Satisfying customer needs by providing quality products, enhancing technology usage, and developing employee competence."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <footer class="footer" id="contact">
         <div class="container">
-            <div class="row">
-                <div class="col-md-6">
+            <div class="row g-4">
+                <div class="col-12 col-md-6">
                     <h5 class="text-white mb-3">BDTSC IETMS</h5>
                     <p>Industrial Employee Task Management System for Bahir Dar Textile Share Company</p>
                     <p><i class="bi bi-geo-alt me-2"></i>Bahir Dar, Ethiopia</p>
                 </div>
-                <div class="col-md-6 text-md-end">
+                <div class="col-12 col-md-6 text-md-end">
                     <h5 class="text-white mb-3">Contact</h5>
                     <p><i class="bi bi-envelope me-2"></i>info@bdtsc.et</p>
                     <p><i class="bi bi-telephone me-2"></i>+251-920-297-671</p>

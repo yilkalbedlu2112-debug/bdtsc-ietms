@@ -1,6 +1,6 @@
 <?php
 require_once '../includes/db.php';
-include '../includes/admin_header.php';
+include '../includes/header_glass.php';
 
 $message = '';
 $error = '';
@@ -135,4 +135,4 @@ if (isset($_GET['edit_id'])) {
     </div>
 </div>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

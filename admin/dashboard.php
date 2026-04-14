@@ -1,6 +1,17 @@
 <?php
+session_start();
+
 require_once '../includes/db.php';
-include '../includes/admin_header.php';
+
+// 1. የመግቢያ ፈቃድ ማረጋገጫ
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+$full_name = $_SESSION['full_name'] ?? 'Admin';
+
+include '../includes/header_glass.php';
 
 $user_count = $pdo->query("SELECT count(*) FROM users")->fetchColumn();
 $dept_count = $pdo->query("SELECT count(*) FROM departments")->fetchColumn();
@@ -32,13 +43,25 @@ $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintena
 
 <div class="row">
     <div class="col-md-12">
-        <div class="card glass-card border-0 rounded-4 mb-4" style="background: linear-gradient(135deg, rgba(102,126,234,0.85) 0%, rgba(118,75,162,0.85) 100%); color: white;">
+        <div class="card glass-card border-0 rounded-4 mb-4" style="background: linear-gradient(135deg, rgba(8, 29, 123, 0.85) 0%, rgba(118,75,162,0.85) 100%); color: white;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h3 class="mb-1">Welcome, General Manager!</h3>
-                        <p class="mb-0 opacity-75">Bahir Dar Textile Share Company - Industrial Equipment & Technical Management System</p>
-                    </div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-person-workspace me-2"></i>
+                Welcome, <?php echo htmlspecialchars($full_name); ?>
+            </h2>
+            <p class="mb-0" style="opacity: 0.85; letter-spacing: 0.5px;">
+                <span class="badge rounded-pill bg-warning text-dark px-3 py-2 fw-bold me-2">
+                    <i class="bi bi-star-fill"></i> General Manager
+                </span>
+                <i class="bi bi-building-check me-1"></i> 
+                Bahir Dar Textile Share Company - IETMS
+                <span class="ms-3 border-start ps-3 opacity-75">
+                    <i class="bi bi-clock-history me-1"></i> <?php echo date('l, F j, Y'); ?>
+                </span>
+            </p>
+        </div>
                     <div class="text-end">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-calendar-event fs-1 me-3 opacity-75"></i>
@@ -53,7 +76,14 @@ $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintena
         </div>
     </div>
 </div>
-
+<div class="col-md-4">
+    <div class="card shadow-sm border-0 p-3 mb-3 text-center" style="border-radius: 15px;">
+        <i class="bi bi-key-fill text-warning" style="font-size: 2rem;"></i>
+        <h5 class="mt-2">Reset Requests</h5>
+        <p class="text-muted small">Pending approvals for password reset</p>
+        <a href="admin_approval.php" class="btn btn-outline-primary btn-sm rounded-pill">View Requests</a>
+    </div>
+</div>
 <div class="row g-4 mb-4">
     <div class="col-xl-3 col-md-6">
         <div class="card glass-card border-0 rounded-4 h-100" style="background: linear-gradient(135deg, rgba(102,126,234,0.8) 0%, rgba(118,75,162,0.8) 100%); color: white;">
@@ -269,4 +299,4 @@ new Chart(document.getElementById('departmentChart'), {
 });
 </script>
 
-<?php include '../includes/admin_footer.php'; ?>
+<?php include '../includes/footer_glass.php'; ?>

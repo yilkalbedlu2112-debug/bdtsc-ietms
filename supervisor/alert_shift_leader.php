@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-
+include '../includes/header_glass.php';
 if (isset($_POST['req_id'])) {
     $req_id = $_POST['req_id'];
     $dept_id = $_SESSION['dept_id'];

@@ -24,51 +24,85 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/glassmorphism.css">
-    <style>
-        body { font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif; }
+   <style>
+    body { font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif; }
+    
+    .sidebar {
+        min-height: 100vh;
+        position: fixed;
+        width: 280px;
+        z-index: 1000;
+        overflow-y: auto; /* ይዘቱ ከበዛ ወደ ላይና ታች እንዲንቀሳቀስ */
+        background: rgba(9, 39, 96, 0.95); /* ለሳይድባሩ የተሻለ ከለር */
+    }
+
+    /* በስልክ ጊዜ (Mobile view) Sidebar-ን ለማስተካከል */
+    @media (max-width: 991.98px) {
         .sidebar {
-            min-height: 100vh;
-            position: fixed;
-            width: 280px;
-            z-index: 1000;
-            overflow-y: auto;
+            position: relative; /* ስልክ ላይ ከገጹ ጋር አብሮ እንዲንቀሳቀስ */
+            width: 100%;
+            min-height: auto;
         }
-        .sidebar .brand {
-            padding: 24px 20px 16px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.03);
+        .main-content {
+            margin-left: 0 !important; /* ስልክ ላይ ሳይድባሩ ቦታ እንዳይዝ */
+            padding: 15px !important;
         }
-        .sidebar .profile-box {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sidebar .brand {
+        padding: 24px 20px 16px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .sidebar .profile-box {
+        padding: 20px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .sidebar .profile-box img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.5);
+    }
+
+    .sidebar a {
+        color: rgba(241,245,249,0.85);
+        text-decoration: none;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        transition: all 0.25s ease;
+    }
+
+    .sidebar a:hover, .sidebar a.active {
+        background: rgba(255,255,255,0.1);
+        color: #ffffff;
+        border-left: 4px solid #667eea;
+    }
+
+    .main-content { 
+        margin-left: 280px; 
+        padding: 28px; 
+        min-height: 100vh; 
+        transition: all 0.3s ease;
+    }
+
+    /* --- ለሪፖርት (Print) ብቻ የሚሆን ማስተካከያ --- */
+    @media print {
+        .sidebar, .language-switcher, .text-warning {
+            display: none !important; /* ፒዲኤፍ ላይ ሳይድባር እንዲጠፋ */
         }
-        .sidebar .profile-box img {
-            width: 90px;
-            height: 90px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.5);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        .main-content {
+            margin-left: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
         }
-        .sidebar a {
-            color: rgba(241,245,249,0.85);
-            text-decoration: none;
-            padding: 14px 24px;
-            display: flex;
-            align-items: center;
-            transition: all 0.25s ease;
-            font-weight: 500;
-        }
-        .sidebar a:hover, .sidebar a.active {
-            background: rgba(255,255,255,0.1);
-            color: #ffffff;
-            border-left: 4px solid var(--primary-gradient, #667eea);
-        }
-        .sidebar a i { margin-right: 14px; font-size: 1.1rem; }
-        .main-content { margin-left: 280px; padding: 28px; padding-top: 60px; min-height: 100vh; }
-    </style>
+    }
+</style>
 </head>
 <body>
 
@@ -95,41 +129,77 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <a href="<?php echo $base_url; ?>/admin/manage_departments.php" class="<?php echo $current_page == 'manage_departments.php' ? 'active' : ''; ?>"><i class="bi bi-building"></i> <?php echo __('departments'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/audit_trail.php" class="<?php echo $current_page == 'audit_trail.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'active' : ''; ?>"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
+                <li class="nav-item">
+        <a class="nav-link <?php echo (basename($_SERVER['PHP_SELF']) == 'admin_approval.php') ? 'active' : ''; ?>" 
+           href="../admin/admin_approval.php" 
+           style="color: white; padding: 12px 20px; display: block; text-decoration: none;">
+            <i class="bi bi-shield-check me-2"></i> 
+            Password Requests 
+            <?php
+                $stmt_count = $pdo->query("SELECT COUNT(*) FROM users WHERE reset_token IS NOT NULL AND reset_approved = 0");
+                $pending_count = $stmt_count->fetchColumn();
+                if ($pending_count > 0): 
+            ?>
+                <span class="badge rounded-pill bg-danger float-end"><?php echo $pending_count; ?></span>
+            <?php endif; ?>
+        </a>
+    </li>
             <?php elseif ($role === 'Department Manager'): ?>
     <a href="<?php echo $base_url; ?>/manager/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">
         <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?>
     </a>
-
     <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>">
         <i class="bi bi-plus-square"></i> Create Task
     </a>
-
-    <a href="<?php echo $base_url; ?>/manager/audit_logs.php" class="<?php echo $current_page == 'audit_logs.php' ? 'active' : ''; ?>">
-        <i class="bi bi-shield-lock"></i> Audit Vault
+    <a href="<?php echo $base_url; ?>/manager/maintenance_list.php" class="<?php echo $current_page == 'maintenance_list.php' ? 'active' : ''; ?>">
+        <i class="bi bi-shield-lock"></i> Maintenance
     </a>
-
+    <a href="<?php echo $base_url; ?>/manager/view_requests.php" class="<?php echo $current_page == 'view_requests.php' ? 'active' : ''; ?>">
+        <i class="bi bi-shield-lock"></i> View Requests
+    </a>
     <a href="<?php echo $base_url; ?>/manager/productivity_analytics.php" class="<?php echo $current_page == 'productivity_analytics.php' ? 'active' : ''; ?>">
         <i class="bi bi-graph-up-arrow"></i> Productivity
     </a>
-
     <a href="<?php echo $base_url; ?>/manager/generate_report.php" class="<?php echo $current_page == 'generate_report.php' ? 'active' : ''; ?>">
         <i class="bi bi-file-earmark-pdf"></i> <?php echo __('reports'); ?>
     </a>
+    
             <?php elseif ($role === 'Deputy General Manager'): ?>
                 <a href="<?php echo $base_url; ?>/deputy_gm/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/admin/manage_departments.php" class="<?php echo $current_page == 'manage_departments.php' ? 'active' : ''; ?>"><i class="bi bi-building"></i> <?php echo __('departments'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/audit_trail.php" class="<?php echo $current_page == 'audit_trail.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'active' : ''; ?>"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
+            
             <?php elseif ($role === 'Engineering Manager'): ?>
                 <a href="<?php echo $base_url; ?>/engineering/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+            
             <?php elseif ($role === 'Shift Leader'): ?>
                 <a href="<?php echo $base_url; ?>/shift_leader/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+            
             <?php elseif ($role === 'Supervisor'): ?>
-                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">
+                    <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?>
+                </a>
+                <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>">
+                    <i class="bi bi-plus-circle-dotted"></i> Create New Task
+                </a>
+                <a href="<?php echo $base_url; ?>/supervisor/alert_shift_leader.php" class="<?php echo $current_page == 'alert_shift_leader.php' ? 'active' : ''; ?> text-warning">
+                    <i class="bi bi-megaphone"></i> Alert Shift Leader
+                </a>
+                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php#tasks" class="nav-link">
+                    <i class="bi bi-list-check"></i> Monitor Tasks
+                </a>
+                <a href="#" onclick="checkStatus()" class="nav-link">
+                    <i class="bi bi-arrow-repeat"></i> Sync Updates
+                </a>
+
             <?php elseif ($role === 'Technician'): ?>
                 <a href="<?php echo $base_url; ?>/technician/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+            
             <?php else: ?>
                 <a href="<?php echo $base_url; ?>/employee/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
             <?php endif; ?>
+                
             
             <hr class="border-secondary mx-3">
             <a href="<?php echo $base_url; ?>/auth/profile.php" class="<?php echo $current_page == 'profile.php' ? 'active' : ''; ?>"><i class="bi bi-person-circle"></i> My Profile</a>
