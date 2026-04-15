@@ -10,8 +10,8 @@ if (session_status() === PHP_SESSION_NONE) {
 
 echo "<h1>Debug: Home Page Test</h1>";
 
-if (isset($_SESSION['role'])) {
-    echo "<p>Logged in as: " . $_SESSION['role'] . "</p>";
+if (isset($_SESSION['user_role'])) {
+    echo "<p>Logged in as: " . $_SESSION['user_role'] . "</p>";
     echo "<p><a href='auth/logout.php'>Logout</a></p>";
 } else {
     echo "<p>Not logged in</p>";

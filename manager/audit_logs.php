@@ -3,13 +3,13 @@ session_start();
 require_once '../includes/db.php';
 
 // 1. Authentication & Role Check (Security First)
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['General Manager', 'Department Manager'])) {
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['General Manager', 'Department Manager'])) {
     header("Location: ../auth/login.php");
     exit();
 }
 
 $dept_id = $_SESSION['dept_id'];
-$user_role = $_SESSION['role'];
+$user_role = $_SESSION['user_role'];
 $full_name = $_SESSION['full_name'];
 
 // ስህተትን ለመከላከል $logs አስቀድሞ ባዶ Array መሆኑን እናረጋግጥ

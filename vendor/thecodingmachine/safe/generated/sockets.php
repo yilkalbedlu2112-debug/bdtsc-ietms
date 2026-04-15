@@ -252,7 +252,7 @@ function socket_create_pair(int $domain, int $type, int $protocol, ?iterable &$p
 /**
  * Creates and returns a Socket instance, also referred to as an endpoint
  * of communication. A typical network connection is made up of 2 sockets, one
- * performing the role of the client, and another performing the role of the server.
+ * performing the user_role of the client, and another performing the user_role of the server.
  *
  * @param int $domain The domain parameter specifies the protocol
  * family to be used by the socket.

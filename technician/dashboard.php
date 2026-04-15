@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db.php';
 
 // Security: Check if user is Technician
-if ($_SESSION['role'] !== 'Technician') {
+if ($_SESSION['user_role'] !== 'Technician') {
     header("Location: ../auth/login.php");
     exit();
 }

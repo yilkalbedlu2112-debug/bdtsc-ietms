@@ -2,7 +2,7 @@
 session_start();
 require_once '../includes/db.php';
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Department Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Department Manager') {
     header("Location: ../auth/login.php");
     exit();
 }
@@ -26,7 +26,7 @@ include '../includes/header_glass.php';
             </div>
 
             <?php if (isset($_GET['error'])): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert alert-danger alert-dismissible fade show" user_role="alert">
                     <?php echo htmlspecialchars($_GET['error']); ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>

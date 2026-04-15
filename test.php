@@ -20,8 +20,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (isset($_SESSION['role'])) {
-    echo "<p>Current user role: " . $_SESSION['role'] . "</p>";
+if (isset($_SESSION['user_role'])) {
+    echo "<p>Current user user_role: " . $_SESSION['user_role'] . "</p>";
     echo "<p>Should redirect to dashboard...</p>";
 } else {
     echo "<p>No user logged in - should show home page</p>";

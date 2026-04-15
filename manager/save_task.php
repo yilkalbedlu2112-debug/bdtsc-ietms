@@ -3,7 +3,7 @@
 session_start();
 require_once '../includes/db.php';
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Department Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Department Manager') {
     header("Location: ../auth/login.php");
     exit();
 }

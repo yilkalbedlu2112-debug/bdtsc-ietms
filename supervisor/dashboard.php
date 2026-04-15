@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db.php';
 
 // Check if user is Supervisor
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Supervisor') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Supervisor') {
     header("Location: ../auth/login.php");
     exit();
 }
@@ -36,7 +36,7 @@ $stmt_live->execute([$dept_id]);
 $live_tasks = $stmt_live->fetchAll();
 
 // Fetch Employees for assignment
-$stmt_emp = $pdo->prepare("SELECT id, full_name, role FROM users WHERE dept_id = ? AND role IN ('Employee', 'Technician')");
+$stmt_emp = $pdo->prepare("SELECT id, full_name, user_role FROM users WHERE dept_id = ? AND user_role IN ('Employee', 'Technician')");
 $stmt_emp->execute([$dept_id]);
 $employees = $stmt_emp->fetchAll();
 
@@ -44,7 +44,7 @@ include '../includes/header_glass.php';
 ?>
 <!-- Toast for Notifications -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
-    <div id="supToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div id="supToast" class="toast align-items-center text-white bg-success border-0" user_role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body fw-semibold" id="toastMsg">Action successful.</div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
@@ -177,7 +177,7 @@ include '../includes/header_glass.php';
                                                                 <select id="empSelectQ<?php echo $tq['id']; ?>" class="form-select bg-light border-0" required>
                                                                     <option value="">-- Choose --</option>
                                                                     <?php foreach($employees as $emp): ?>
-                                                                    <option value="<?php echo $emp['id']; ?>"><?php echo htmlspecialchars($emp['full_name']); ?> (<?php echo $emp['role']; ?>)</option>
+                                                                    <option value="<?php echo $emp['id']; ?>"><?php echo htmlspecialchars($emp['full_name']); ?> (<?php echo $emp['user_role']; ?>)</option>
                                                                     <?php endforeach; ?>
                                                                 </select>
                                                             </div>

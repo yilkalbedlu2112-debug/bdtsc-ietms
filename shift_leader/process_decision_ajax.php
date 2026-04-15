@@ -3,7 +3,7 @@ session_start();
 header('Content-Type: application/json');
 require_once '../includes/db.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Shift Leader') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'Shift Leader') {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }

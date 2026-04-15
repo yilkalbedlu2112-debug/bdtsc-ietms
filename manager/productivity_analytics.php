@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db.php';
 
 // 1. Authentication Check
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Department Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Department Manager') {
     header("Location: ../auth/login.php");
     exit();
 }
@@ -29,7 +29,7 @@ $staff_perf = $pdo->prepare("
     SELECT u.full_name, COUNT(m.id) as task_count 
     FROM users u 
     LEFT JOIN maintenance_requests m ON u.id = m.assigned_to 
-    WHERE u.dept_id = ? AND u.role NOT IN ('Department Manager', 'Admin')
+    WHERE u.dept_id = ? AND u.user_role NOT IN ('Department Manager', 'Admin')
     GROUP BY u.id 
     ORDER BY task_count DESC LIMIT 5
 ");

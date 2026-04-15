@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db.php';
 
 // Check if user is GM
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'General Manager') {
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'General Manager') {
     header("Location: ../auth/login.php");
     exit();
 }

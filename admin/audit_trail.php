@@ -1,14 +1,14 @@
 <?php 
 require_once '../includes/db.php';
 session_start();
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
     header("Location: ../auth/login.php");
     exit();
 }
 include '../includes/header_glass.php';
 
 // 1. መረጃውን ከዳታቤዝ ማምጣት (ከነ ሰራተኛው ስም ጋር)
-$query = "SELECT l.*, u.full_name, u.role 
+$query = "SELECT l.*, u.full_name, u.user_role 
           FROM audit_logs l 
           LEFT JOIN users u ON l.user_id = u.id 
           ORDER BY l.created_at DESC";
@@ -83,7 +83,7 @@ $logs = $pdo->query($query)->fetchAll();
                             </td>
                             <td>
                                 <span class="badge bg-light text-dark border rounded-pill px-3 py-2">
-                                    <?php echo $log['role'] ?? 'N/A'; ?>
+                                    <?php echo $log['user_role'] ?? 'N/A'; ?>
                                 </span>
                             </td>
                             <td>

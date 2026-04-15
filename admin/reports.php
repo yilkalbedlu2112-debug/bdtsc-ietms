@@ -27,7 +27,7 @@ $total_users = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 $total_departments = $pdo->query("SELECT COUNT(*) FROM departments")->fetchColumn();
 $total_requests = $pdo->query("SELECT COUNT(*) FROM maintenance_requests")->fetchColumn();
 $requests_by_status = $pdo->query("SELECT status, COUNT(*) AS total FROM maintenance_requests GROUP BY status")->fetchAll();
-$users_by_role = $pdo->query("SELECT role, COUNT(*) AS total FROM users GROUP BY role")->fetchAll();
+$users_by_role = $pdo->query("SELECT user_role, COUNT(*) AS total FROM users GROUP BY user_role")->fetchAll();
 
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $filename = 'bdtsc-report-' . date('Ymd_His') . '.csv';
@@ -46,21 +46,21 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     fputcsv($output, []);
     fputcsv($output, ['Users by Role', 'Role', 'Count']);
     foreach ($users_by_role as $row) {
-        fputcsv($output, ['Users by Role', $row['role'], $row['total']]);
+        fputcsv($output, ['Users by Role', $row['user_role'], $row['total']]);
     }
     fclose($output);
     exit;
 }
 
 session_start();
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
     header("Location: ../auth/login.php");
     exit();
 }
 include '../includes/header_glass.php';
 
 // መስመር 66 አካባቢ የነበረውን በዚህ ተካ
-$activity_log_query = "SELECT l.*, u.full_name, u.role FROM audit_logs l 
+$activity_log_query = "SELECT l.*, u.full_name, u.user_role FROM audit_logs l 
                        LEFT JOIN users u ON l.user_id = u.id 
                        WHERE 1=1 " . str_replace('created_at', 'l.created_at', $time_filter) . " 
                        ORDER BY l.created_at DESC LIMIT 20";
@@ -215,7 +215,7 @@ $activity_log = $pdo->query($activity_log_query)->fetchAll();
                     <ul class="list-group">
                         <?php foreach ($users_by_role as $row): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <?php echo htmlspecialchars($row['role']); ?>
+                                <?php echo htmlspecialchars($row['user_role']); ?>
                                 <span class="badge bg-success rounded-pill"><?php echo $row['total']; ?></span>
                             </li>
                         <?php endforeach; ?>
@@ -246,7 +246,7 @@ $activity_log = $pdo->query($activity_log_query)->fetchAll();
                         <tr>
                             <td><?php echo htmlspecialchars($log['created_at']); ?></td>
                             <td><?php echo htmlspecialchars($log['full_name'] ?? 'System'); ?></td>
-                            <td><?php echo htmlspecialchars($log['role'] ?? 'N/A'); ?></td>
+                            <td><?php echo htmlspecialchars($log['user_role'] ?? 'N/A'); ?></td>
                             <td><?php echo htmlspecialchars($log['action']); ?></td>
                             <td><?php echo htmlspecialchars($log['details']); ?></td>
                         </tr>

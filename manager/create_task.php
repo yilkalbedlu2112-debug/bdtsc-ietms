@@ -4,7 +4,7 @@ require_once '../includes/db.php';
 
 // 1. የደህንነት ማጣሪያ (Access Control) - Managers and Supervisors
 $allowed_roles = ['Department Manager', 'Supervisor'];
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowed_roles)) {
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $allowed_roles)) {
     header("Location: ../auth/login.php");
     exit();
 }
@@ -12,7 +12,7 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowed_roles)) {
 // 2. አስፈላጊ መረጃዎችን ከሴሽን መውሰድ
 $dept_id   = $_SESSION['dept_id'];
 $user_id   = $_SESSION['user_id'];
-$user_role = $_SESSION['role'];
+$user_role = $_SESSION['user_role'];
 $full_name = $_SESSION['full_name'];
 $dept_name = trim($_SESSION['dept_name'] ?? 'Department');
 
@@ -101,13 +101,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: dashboard.php");
             exit();
         } catch (Exception $e) {
-            $error = "ስህተት አጋጥሟል፡ " . $e->getMessage();
+                $error = "ስህተት አጋጥሟል፡ " . $e->getMessage();
+            }
         }
     }
-}
 
 // 7. ለተመዳቢ ሰራተኞች ዝርዝር (እንደየ ሚናው የሚወጣ)
-$users_stmt = $pdo->prepare("SELECT id, full_name, role FROM users WHERE dept_id = ? AND status = 'Active' AND role IN ($roles_filter) ORDER BY full_name");
+$users_stmt = $pdo->prepare("SELECT id, full_name, user_role FROM users WHERE dept_id = ? AND status = 'Active' AND user_role IN ($roles_filter) ORDER BY full_name");
 $users_stmt->execute([$dept_id]);
 $dept_staff = $users_stmt->fetchAll();
 
@@ -125,6 +125,12 @@ include '../includes/header_glass.php';
                 <a href="dashboard.php" class="btn btn-outline-secondary">Back</a>
             </div>
 
+            <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success glass-card border-0 shadow-sm">
+                    <?php echo htmlspecialchars($_SESSION['success']); ?>
+                </div>
+                <?php unset($_SESSION['success']); ?>
+            <?php endif; ?>
             <?php if (isset($error)): ?>
                 <div class="alert alert-danger"><?php echo $error; ?></div>
             <?php endif; ?>
@@ -171,7 +177,7 @@ include '../includes/header_glass.php';
                                     <option value="">-- Select Employee --</option>
                                     <?php foreach ($dept_staff as $staff): ?>
                                         <option value="<?php echo $staff['id']; ?>">
-                                            <?php echo $staff['full_name'] . " (" . $staff['role'] . ")"; ?>
+                                            <?php echo $staff['full_name'] . " (" . $staff['user_role'] . ")"; ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>

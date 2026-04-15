@@ -4,7 +4,7 @@ session_start();
 require_once '../includes/db.php';
 
 // 1. የመግቢያ ፈቃድ ማረጋገጫ
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
     header("Location: ../auth/login.php");
     exit();
 }

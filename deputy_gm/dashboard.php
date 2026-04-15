@@ -1,6 +1,6 @@
 <?php
 session_start();
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Deputy General Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Deputy General Manager') {
     header("Location: ../auth/login.php");
     exit();
 }
@@ -22,18 +22,18 @@ include '../includes/header_glass.php';
     </div>
 
     <!-- Dual-View Tabs -->
-    <ul class="nav nav-pills mb-4 gap-2" id="dgmTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active rounded-pill px-4" id="production-tab" data-bs-toggle="pill" data-bs-target="#production-view" type="button" role="tab"><i class="bi bi-graph-up me-2"></i>View A: Production KPIs</button>
+    <ul class="nav nav-pills mb-4 gap-2" id="dgmTabs" user_role="tablist">
+        <li class="nav-item" user_role="presentation">
+            <button class="nav-link active rounded-pill px-4" id="production-tab" data-bs-toggle="pill" data-bs-target="#production-view" type="button" user_role="tab"><i class="bi bi-graph-up me-2"></i>View A: Production KPIs</button>
         </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill px-4" id="technique-tab" data-bs-toggle="pill" data-bs-target="#technique-view" type="button" role="tab"><i class="bi bi-wrench-adjustable me-2"></i>View B: Technique Oversight</button>
+        <li class="nav-item" user_role="presentation">
+            <button class="nav-link rounded-pill px-4" id="technique-tab" data-bs-toggle="pill" data-bs-target="#technique-view" type="button" user_role="tab"><i class="bi bi-wrench-adjustable me-2"></i>View B: Technique Oversight</button>
         </li>
     </ul>
 
     <div class="tab-content" id="dgmTabsContent">
         <!-- View A: Production -->
-        <div class="tab-pane fade show active" id="production-view" role="tabpanel">
+        <div class="tab-pane fade show active" id="production-view" user_role="tabpanel">
     <div class="row g-4 mb-4">
         <div class="col-12">
             <div class="card glass-card border-0 shadow-sm p-4">
@@ -48,11 +48,11 @@ include '../includes/header_glass.php';
         </div>
 
         <!-- View B: Technique -->
-        <div class="tab-pane fade" id="technique-view" role="tabpanel">
+        <div class="tab-pane fade" id="technique-view" user_role="tabpanel">
             <div class="card glass-card border-0 shadow-sm overflow-hidden">
                 <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0"><i class="bi bi-activity me-2"></i>Live Maintenance Stream (Engineering)</h6>
-            <div class="spinner-grow spinner-grow-sm text-info" role="status" id="liveIndicator">
+            <div class="spinner-grow spinner-grow-sm text-info" user_role="status" id="liveIndicator">
                 <span class="visually-hidden">Loading...</span>
             </div>
         </div>
@@ -71,7 +71,7 @@ include '../includes/header_glass.php';
                 <tbody id="liveTasksBody">
                     <tr>
                         <td colspan="6" class="text-center py-5 text-muted">
-                            <div class="spinner-border text-primary" role="status"></div>
+                            <div class="spinner-border text-primary" user_role="status"></div>
                             <div class="mt-2">Initializing Secure Uplink...</div>
                         </td>
                     </tr>

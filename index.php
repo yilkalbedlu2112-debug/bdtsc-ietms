@@ -13,8 +13,8 @@ try {
     require_once 'includes/db.php';
 
     // Session check: If user is logged in, redirect to appropriate dashboard
-    if (isset($_SESSION['role'])) {
-        switch ($_SESSION['role']) {
+    if (isset($_SESSION['user_role'])) {
+        switch ($_SESSION['user_role']) {
             case 'General Manager':
                 header('Location: admin/dashboard.php');
                 exit();
@@ -37,7 +37,7 @@ try {
                 header('Location: deputy_gm/dashboard.php');
                 exit();
             default:
-                // Unknown role, redirect to login
+                // Unknown user_role, redirect to login
                 header('Location: auth/login.php');
                 exit();
         }
@@ -67,7 +67,7 @@ try {
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: #0d8e95ff;
             color: #0f172a;
         }
         .amharic-text {
@@ -88,7 +88,7 @@ try {
             transform: translateY(-1px);
         }
         .navbar-custom {
-            background: #093291ff;
+            background: #052a81ff;
         }
         .btn-login {
             background: #38bdf8;
@@ -100,13 +100,13 @@ try {
         }
         .hero {
             position: relative;
-            background: linear-gradient(360deg, rgba(7, 53, 159, 0.76) 0%, rgba(33, 67, 147, 0.82) 100%),
+            background: linear-gradient(0deg, rgba(7, 53, 159, 0.76) 0%, rgba(33, 67, 147, 0.82) 100%),
                         url('assets/images/bkg.jpg');
             background-size: cover;
-            background-position: center;
+            background-position: bottom;
             background-repeat: no-repeat;
             color: white;
-            min-height: calc(100vh - 72px);
+            min-height: calc(100vh - 150px);
             display: flex;
             align-items: center;
         }
@@ -134,7 +134,7 @@ try {
             margin-bottom: 0.5rem;
         }
         .hero p {
-            color: rgba(255,255,255,0.9);
+            color: rgba(29, 232, 239, 0.9);
             max-width: 640px;
         }
         .btn-login,
@@ -297,7 +297,7 @@ try {
                             <i class="bi bi-shield-check"></i>
                         </div>
                         <h5 class="fw-bold mb-3">Secure Audit Trail</h5>
-                        <p class="text-muted mb-0">Complete logging of all system activities with role-based access control.</p>
+                        <p class="text-muted mb-0">Complete logging of all system activities with user_role-based access control.</p>
                     </div>
                 </div>
             </div>
@@ -341,7 +341,7 @@ try {
             </div>
             <hr class="my-4">
             <div class="text-center">
-                <p class="mb-0">&copy; 2024 Bahir Dar Textile Share Company. All rights reserved.</p>
+                <p class="mb-0">&copy; 2026 Bahir Dar Textile Share Company. All rights reserved.</p>
             </div>
         </div>
     </footer>

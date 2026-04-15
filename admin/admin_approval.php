@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db.php';
 
 // አስተዳዳሪ መሆኑን ማረጋገጥ
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'General Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
     die("Unauthorized access!");
 }
 

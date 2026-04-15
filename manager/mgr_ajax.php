@@ -3,7 +3,7 @@ session_start();
 header('Content-Type: application/json');
 require_once '../includes/db.php';
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Department Manager') {
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
@@ -11,6 +11,14 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Department Manager') {
 $dept_id = $_SESSION['dept_id'];
 $user_id = $_SESSION['user_id'];
 $action = $_POST['action'] ?? '';
+
+$dept_stmt = $pdo->prepare("SELECT dept_name FROM departments WHERE id = ?");
+$dept_stmt->execute([$dept_id]);
+$dept_info = $dept_stmt->fetch();
+$dept_name = trim($dept_info['dept_name'] ?? '');
+
+$admin_departments = ['Human Resource (HR)', 'Planning', 'Strategy & Innovation', 'System Research & Development', 'Legal Service', 'Audit & Inspection'];
+$use_title_column = in_array($dept_name, $admin_departments, true);
 
 try {
     if ($action === 'create_task') {
@@ -36,8 +44,15 @@ try {
         }
 
         $status = $assigned_to ? 'Assigned' : 'Pending Approval';
-        $stmt = $pdo->prepare("INSERT INTO maintenance_requests (user_id, dept_id, assigned_to, machine_name, issue_description, priority, status, task_type, due_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        if($stmt->execute([$user_id, $dept_id, $assigned_to, $title, $description, $priority, $status, $task_type, $due_date])) {
+        if ($use_title_column) {
+            $stmt = $pdo->prepare("INSERT INTO maintenance_requests (user_id, dept_id, assigned_to, title, issue_description, priority, status, task_type, due_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $insertParams = [$user_id, $dept_id, $assigned_to, $title, $description, $priority, $status, $task_type, $due_date];
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO maintenance_requests (user_id, dept_id, assigned_to, machine_name, issue_description, priority, status, task_type, due_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $insertParams = [$user_id, $dept_id, $assigned_to, $title, $description, $priority, $status, $task_type, $due_date];
+        }
+
+        if($stmt->execute($insertParams)) {
             
             if($assigned_to) {
                 $n = $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'task')");

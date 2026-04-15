@@ -3,7 +3,7 @@ session_start();
 require_once '../includes/db.php';
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Deputy General Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Deputy General Manager') {
     echo json_encode(['error' => 'Unauthorized']);
     exit();
 }

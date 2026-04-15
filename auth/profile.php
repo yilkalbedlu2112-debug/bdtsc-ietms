@@ -28,7 +28,7 @@ include '../includes/header_glass.php';
                 <div class="text-center mb-4">
                     <img src="../assets/images/deputy Manager.jpg" class="rounded-circle shadow" width="120" height="120" style="object-fit: cover; border: 4px solid var(--bg-gray);">
                     <h4 class="fw-bold mt-3"><?php echo htmlspecialchars($user['full_name']); ?></h4>
-                    <span class="badge bg-soft-primary text-primary"><?php echo htmlspecialchars($user['role']); ?></span>
+                    <span class="badge bg-soft-primary text-primary"><?php echo htmlspecialchars($user['user_role']); ?></span>
                 </div>
                 
                 <hr class="opacity-25 my-4">

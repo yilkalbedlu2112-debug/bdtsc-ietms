@@ -1,7 +1,7 @@
 <?php
 // bdtsc-ietms/includes/deputy_gm_header.php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Production and Technique Deputy General Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Production and Technique Deputy General Manager') {
     header("Location: ../auth/login.php");
     exit();
 }
@@ -58,7 +58,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Production and Technique
             font-weight: 600;
             color: #f8fafc;
         }
-        .sidebar .profile-box .role {
+        .sidebar .profile-box .user_role {
             margin-top: 4px;
             font-size: 0.85rem;
             color: rgba(241, 245, 249, 0.7);
@@ -158,7 +158,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Production and Technique
             <div class="profile-box">
                 <img src="<?php echo $profile_image_src; ?>" alt="Profile Photo" onerror="this.onerror=null;this.src='https://via.placeholder.com/100/0f172a/ffffff?text=Deputy+GM';">
                 <div class="name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Deputy General Manager'); ?></div>
-                <div class="role">Deputy GM (Technical)</div>
+                <div class="user_role">Deputy GM (Technical)</div>
             </div>
             <a href="dashboard.php"><i class="bi bi-speedometer2"></i> Dashboard</a>
             <a href="../admin/manage_users.php"><i class="bi bi-people-fill"></i> Manage Users</a>

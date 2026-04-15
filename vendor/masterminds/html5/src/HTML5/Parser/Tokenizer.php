@@ -7,7 +7,7 @@ use Masterminds\HTML5\Elements;
 /**
  * The HTML5 tokenizer.
  *
- * The tokenizer's role is reading data from the scanner and gathering it into
+ * The tokenizer's user_role is reading data from the scanner and gathering it into
  * semantic units. From the tokenizer, data is emitted to an event handler,
  * which may (for example) create a DOM tree.
  *

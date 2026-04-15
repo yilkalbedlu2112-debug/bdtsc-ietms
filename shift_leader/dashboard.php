@@ -15,7 +15,7 @@ $progress_stmt->execute([$dept_id]);
 $all_tasks = $progress_stmt->fetchAll();
 
 // 3. Get employees for assignment
-$emp_stmt = $pdo->prepare("SELECT id, full_name, role FROM users WHERE dept_id = ? AND role IN ('Employee', 'Technician')");
+$emp_stmt = $pdo->prepare("SELECT id, full_name, user_role FROM users WHERE dept_id = ? AND user_role IN ('Employee', 'Technician')");
 $emp_stmt->execute([$dept_id]);
 $employees = $emp_stmt->fetchAll();
 
@@ -23,7 +23,7 @@ include '../includes/header_glass.php';
 ?>
 <!-- Modal and Toast placeholders -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
-    <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0" user_role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body fw-semibold" id="toastMessage">
           Action completed.
@@ -107,7 +107,7 @@ include '../includes/header_glass.php';
                                                                 <select name="employee_id" class="form-select bg-light border-0" required id="empSelect<?php echo $task['id']; ?>">
                                                                     <option value="">-- Choose Employee --</option>
                                                                     <?php foreach($employees as $emp): ?>
-                                                                    <option value="<?php echo $emp['id']; ?>"><?php echo htmlspecialchars($emp['full_name']); ?> (<?php echo $emp['role']; ?>)</option>
+                                                                    <option value="<?php echo $emp['id']; ?>"><?php echo htmlspecialchars($emp['full_name']); ?> (<?php echo $emp['user_role']; ?>)</option>
                                                                     <?php endforeach; ?>
                                                                 </select>
                                                             </div>

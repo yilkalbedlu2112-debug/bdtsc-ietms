@@ -18,7 +18,7 @@ $stmt = $pdo->prepare("SELECT u.*, d.dept_name FROM users u LEFT JOIN department
                 // 2. ሴሽን መፍጠር
             session_regenerate_id(true);
             $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = $user['role'];
+            $_SESSION['user_role'] = $user['user_role'];
             $_SESSION['full_name'] = $user['full_name'];
             $_SESSION['dept_id'] = $user['dept_id'];
             $_SESSION['dept_name'] = $user['dept_name'] ?? '';
@@ -27,7 +27,7 @@ $stmt = $pdo->prepare("SELECT u.*, d.dept_name FROM users u LEFT JOIN department
         log_action($pdo, $user['id'], "Login", "User logged into the system");
 
         // 4. እንደየ ስልጣኑ (Role) ወደ ተለያየ ፎልደር መምራት (Redirect)
-        switch ($user['role']) {
+        switch ($user['user_role']) {
             case 'General Manager':
                 header("Location: ../admin/dashboard.php");
                 break;

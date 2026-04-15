@@ -260,19 +260,19 @@ function ibase_commit($link_or_trans_identifier = null): void
  * @param int $dialect dialect selects the default SQL dialect for any
  * statement executed within a connection, and it defaults to the highest
  * one supported by client libraries.
- * @param string $role Functional only with InterBase 5 and up.
+ * @param string $user_role Functional only with InterBase 5 and up.
  * @param int $sync
  * @return resource Returns an Firebird/InterBase link identifier on success.
  * @throws IbaseException
  *
  */
-function ibase_connect(string $database = null, string $username = null, string $password = null, string $charset = null, int $buffers = null, int $dialect = null, string $role = null, int $sync = null)
+function ibase_connect(string $database = null, string $username = null, string $password = null, string $charset = null, int $buffers = null, int $dialect = null, string $user_role = null, int $sync = null)
 {
     error_clear_last();
     if ($sync !== null) {
-        $safeResult = \ibase_connect($database, $username, $password, $charset, $buffers, $dialect, $role, $sync);
-    } elseif ($role !== null) {
-        $safeResult = \ibase_connect($database, $username, $password, $charset, $buffers, $dialect, $role);
+        $safeResult = \ibase_connect($database, $username, $password, $charset, $buffers, $dialect, $user_role, $sync);
+    } elseif ($user_role !== null) {
+        $safeResult = \ibase_connect($database, $username, $password, $charset, $buffers, $dialect, $user_role);
     } elseif ($dialect !== null) {
         $safeResult = \ibase_connect($database, $username, $password, $charset, $buffers, $dialect);
     } elseif ($buffers !== null) {
@@ -494,19 +494,19 @@ function ibase_name_result($result, string $name): void
  * statement executed within a connection, and it defaults to the highest
  * one supported by client libraries. Functional only with InterBase 6
  * and up.
- * @param string $role Functional only with InterBase 5 and up.
+ * @param string $user_role Functional only with InterBase 5 and up.
  * @param int $sync
  * @return resource Returns an InterBase link identifier on success.
  * @throws IbaseException
  *
  */
-function ibase_pconnect(string $database = null, string $username = null, string $password = null, string $charset = null, int $buffers = null, int $dialect = null, string $role = null, int $sync = null)
+function ibase_pconnect(string $database = null, string $username = null, string $password = null, string $charset = null, int $buffers = null, int $dialect = null, string $user_role = null, int $sync = null)
 {
     error_clear_last();
     if ($sync !== null) {
-        $safeResult = \ibase_pconnect($database, $username, $password, $charset, $buffers, $dialect, $role, $sync);
-    } elseif ($role !== null) {
-        $safeResult = \ibase_pconnect($database, $username, $password, $charset, $buffers, $dialect, $role);
+        $safeResult = \ibase_pconnect($database, $username, $password, $charset, $buffers, $dialect, $user_role, $sync);
+    } elseif ($user_role !== null) {
+        $safeResult = \ibase_pconnect($database, $username, $password, $charset, $buffers, $dialect, $user_role);
     } elseif ($dialect !== null) {
         $safeResult = \ibase_pconnect($database, $username, $password, $charset, $buffers, $dialect);
     } elseif ($buffers !== null) {

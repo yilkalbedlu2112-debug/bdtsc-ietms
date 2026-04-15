@@ -1,6 +1,6 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'Department Manager') {
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Department Manager') {
     header("Location: ../auth/login.php");
     exit();
 }
