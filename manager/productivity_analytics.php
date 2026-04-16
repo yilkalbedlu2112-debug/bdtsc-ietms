@@ -3,23 +3,37 @@ session_start();
 require_once '../includes/db.php';
 
 // 1. Authentication Check
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Department Manager') {
+$allowed_mgr_roles = ['Department Manager', 'Engineering Manager'];
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $allowed_mgr_roles, true)) {
     header("Location: ../auth/login.php");
     exit();
 }
 
-$dept_id = $_SESSION['dept_id'];
+$dept_id      = (int)($_SESSION['dept_id'] ?? 0);
+$user_role    = $_SESSION['user_role'];
+$is_eng_mgr   = ($user_role === 'Engineering Manager');
 
-// 2. KPI Data - Task Stats
-$kpi_stmt = $pdo->prepare("
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN priority IN ('Emergency', 'High') THEN 1 ELSE 0 END) as urgent
-    FROM maintenance_requests WHERE dept_id = ?
-");
-$kpi_stmt->execute([$dept_id]);
+// 2. KPI Data — Engineering Manager sees global stats; others see own dept
+if ($is_eng_mgr) {
+    $kpi_stmt = $pdo->query("
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'Completed'   THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN status = 'In Progress'  THEN 1 ELSE 0 END) as active,
+            SUM(CASE WHEN priority IN ('Emergency', 'High') THEN 1 ELSE 0 END) as urgent
+        FROM maintenance_requests
+    ");
+} else {
+    $kpi_stmt = $pdo->prepare("
+        SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'Completed'   THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN status = 'In Progress'  THEN 1 ELSE 0 END) as active,
+            SUM(CASE WHEN priority IN ('Emergency', 'High') THEN 1 ELSE 0 END) as urgent
+        FROM maintenance_requests WHERE dept_id = ?
+    ");
+    $kpi_stmt->execute([$dept_id]);
+}
 $kpi = $kpi_stmt->fetch();
 
 $completion_rate = ($kpi['total'] > 0) ? round(($kpi['completed'] / $kpi['total']) * 100) : 0;

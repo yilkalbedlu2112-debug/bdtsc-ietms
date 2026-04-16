@@ -32,22 +32,36 @@ $btn_extra_icon = "bi-plus-circle";
 $btn_extra_class = "btn-outline-primary";
 $target_modal = "#createTaskModal";
 
-// Use exact user-provided department labels for workflow grouping
-$dept_aliases = [
-    'Human Resource (HR)' => 'HR',
-    'Strategy & Innovation' => 'Strategy',
-    'System Research & Development' => 'R&D',
-    'Audit & Inspection' => 'Audit',
-    'Procurement / Property' => 'Procurement',
-    'Legal Service' => 'Legal',
-    'Quality Assurance' => 'QA'
-];
-$dept_key = $dept_aliases[$dept_name] ?? $dept_name;
+// dept_key = dept_name directly  (aliases removed — they broke in_array matching)
+// All group arrays use EXACT names from the `departments` table
+$dept_key = $dept_name;
 
-$production_group = ['Spinning Department', 'Weaving Department', 'Processing Department', 'Garment Department'];
-$technical_quality_group = ['Engineering', 'Quality Assurance'];
-$finance_resource_group = ['Finance Department', 'Procurement / Property'];
-$admin_strategy_group = ['Human Resource (HR)', 'Planning', 'Strategy & Innovation', 'System Research & Development', 'Legal Service', 'Audit & Inspection'];
+$production_group = [
+    'Spinning Department',
+    'Weaving Department',
+    'Processing Department',
+    'Garment Department',
+];
+
+$technical_quality_group = [
+    'Engineering',
+    'Quality Assurance',   // DB id 13
+];
+
+$finance_resource_group = [
+    'Finance Department',  // DB id 7
+    'Procurement / Property', // DB id 14 — exact name
+];
+
+$admin_strategy_group = [
+    'General Management',          // DB id 1
+    'Human Resource (HR)',          // DB id 12 — exact name with parentheses
+    'Planning',                     // DB id 5
+    'Strategy & Innovation',        // DB id 4 — exact name with &
+    'System Research & Development',// DB id 6
+    'Legal Service',                // DB id 15
+    'Audit & Inspection',           // DB id 11
+];
 
 if (in_array($dept_key, $production_group, true)) {
     $is_production = true;
@@ -94,6 +108,7 @@ if (in_array($dept_key, $production_group, true)) {
     $target_modal = "#createTaskModal";
     $roles = ['Officer', 'Clerk', 'Secretary', 'Auditor', 'Employee'];
 } else {
+    // Fallback for any unlisted department
     $roles = ['Employee', 'Staff', 'Officer'];
 }
 
@@ -163,6 +178,18 @@ if ($is_eng_manager) {
     $dispatch_tasks = $dispatch_stmt->fetchAll();
 }
 
+// ── Notification count: unread incoming cross-dept requests for this dept ────
+$notif_stmt = $pdo->prepare(
+    "SELECT COUNT(*) FROM maintenance_requests
+     WHERE receiver_dept_id = ? AND is_read_by_receiver = 0");
+$notif_stmt->execute([$dept_id]);
+$incoming_count = (int)$notif_stmt->fetchColumn();
+
+// ── All departments for the cross-dept request modal dropdown ────────────────
+$depts_stmt = $pdo->prepare("SELECT id, dept_name FROM departments ORDER BY dept_name");
+$depts_stmt->execute();
+$all_departments = $depts_stmt->fetchAll();
+
 include '../includes/header_glass.php';
 
 $message = '';
@@ -190,7 +217,18 @@ if (isset($_GET['success']) && $_GET['success'] === 'sent') {
             </p>
         </div>
         
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            <!-- Notification Bell -->
+            <a href="view_requests.php" class="btn btn-outline-light rounded-pill px-3 position-relative" title="Incoming Cross-Dept Requests">
+                <i class="bi bi-bell-fill"></i>
+                <?php if ($incoming_count > 0): ?>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:0.7rem;">
+                    <?php echo $incoming_count > 9 ? '9+' : $incoming_count; ?>
+                    <span class="visually-hidden">unread requests</span>
+                </span>
+                <?php endif; ?>
+            </a>
+
             <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm border-0" data-bs-toggle="modal" data-bs-target="#createTaskModal">
                 <i class="bi bi-plus-circle text-primary me-1"></i> Create Core Task
             </button>
@@ -478,35 +516,103 @@ if (isset($_GET['success']) && $_GET['success'] === 'sent') {
     </div>
 </div>
 
-<div class="modal fade" id="reqMaintenanceModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content glass-card shadow border-danger border-top border-4 rounded-4">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold text-danger">
-                    <i class="bi bi-tools me-2"></i>Engineering Request
-                </h5>
+<div class="modal fade" id="reqMaintenanceModal" tabindex="-1" aria-labelledby="reqMaintenanceModalLabel">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content glass-card shadow border-0 rounded-4" style="border-top: 4px solid #0d6efd !important;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <div>
+                    <h5 class="modal-title fw-bold text-primary mb-1" id="reqMaintenanceModalLabel">
+                        <i class="bi bi-send-arrow-up-fill me-2"></i>Cross-Department Request
+                    </h5>
+                    <p class="text-muted small mb-0">Send a formal request to another department for repairs, manpower, resources, or legal support.</p>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
-                <form action="process_maintenance.php" method="POST">
-                    
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">MACHINE / ASSET NAME</label>
-                        <input type="text" name="machine_name" class="form-control bg-light border-0 py-2" 
-                               placeholder="ለምሳሌ: Juki Machine #12" required>
+            <div class="modal-body px-4 pb-4">
+                <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-danger border-0 rounded-3"><?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?></div>
+                <?php endif; ?>
+
+                <form action="process_maintenance.php" method="POST" id="crossDeptForm">
+
+                    <!-- Row 1: Request Type + Target Department -->
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-list-ul me-1"></i>REQUEST TYPE <span class="text-danger">*</span>
+                            </label>
+                            <select name="request_type" id="dept_request_type" class="form-select bg-light border-0 py-2" required
+                                    onchange="suggestTargetDept(this.value)">
+                                <option value="">— Select Request Type —</option>
+                                <option value="Repair">🔧 Repair / Machine Fix (→ Engineering)</option>
+                                <option value="Manpower">👥 Manpower / Staffing (→ HR)</option>
+                                <option value="Resource">📦 Resource / Spare Parts (→ Procurement)</option>
+                                <option value="Legal">⚖️ Legal / Contract Review (→ Legal)</option>
+                                <option value="Maintenance">🛠️ Preventive Maintenance (→ Engineering)</option>
+                                <option value="Administrative">📋 Administrative Support</option>
+                                <option value="Other">📌 Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-buildings me-1"></i>TARGET DEPARTMENT <span class="text-danger">*</span>
+                            </label>
+                            <select name="receiver_dept_id" id="receiver_dept_id" class="form-select bg-light border-0 py-2" required>
+                                <option value="">— Select Receiving Department —</option>
+                                <?php foreach ($all_departments as $d): ?>
+                                    <?php if ($d['id'] == $dept_id) continue; ?>
+                                    <option value="<?php echo (int)$d['id']; ?>"
+                                            data-name="<?php echo htmlspecialchars($d['dept_name']); ?>">
+                                        <?php echo htmlspecialchars($d['dept_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold">FAULT DETAILS / EMERGENCY</label>
-                        <textarea name="issue_description" class="form-control bg-light border-0" rows="4" 
-                                  placeholder="ብልሽቱን በዝርዝር እዚህ ይግለጹ..." required></textarea>
+                    <!-- Row 2: Subject + Priority -->
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-8">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-pencil me-1"></i>SUBJECT / ASSET / MACHINE NAME <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="machine_name" class="form-control bg-light border-0 py-2"
+                                   placeholder="e.g., Ring Frame Machine #7 / Staff Request / Spare Belt" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-speedometer2 me-1"></i>PRIORITY <span class="text-danger">*</span>
+                            </label>
+                            <select name="priority" class="form-select bg-light border-0 py-2" required>
+                                <option value="Normal">Normal</option>
+                                <option value="High">High</option>
+                                <option value="Emergency">🚨 Emergency</option>
+                                <option value="Urgent">⚡ Urgent</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <input type="hidden" name="priority" value="Urgent"> <input type="hidden" name="task_type" value="Maintenance">
-                    <input type="hidden" name="status" value="Pending">
+                    <!-- Description -->
+                    <div class="mt-3">
+                        <label class="form-label text-muted small fw-bold">
+                            <i class="bi bi-card-text me-1"></i>DETAILED DESCRIPTION / INSTRUCTIONS <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="issue_description" class="form-control bg-light border-0" rows="4"
+                                  placeholder="Describe the issue, required resources, or support needed in detail..." required></textarea>
+                    </div>
 
-                    <button type="submit" name="submit_maintenance" class="btn btn-danger w-100 rounded-pill fw-bold py-2 shadow-sm">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Send Alert to Engineering
+                    <!-- Hidden fields -->
+                    <input type="hidden" name="task_type" value="Maintenance">
+
+                    <!-- Preview banner -->
+                    <div id="crossDeptPreview" class="alert alert-info border-0 rounded-3 mt-3 d-none" style="font-size:0.85rem;">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <span id="previewText"></span>
+                    </div>
+
+                    <button type="submit" name="submit_dept_request" id="crossDeptSubmitBtn"
+                            class="btn btn-primary w-100 rounded-pill fw-bold py-2 shadow mt-4">
+                        <i class="bi bi-send-fill me-2"></i>Submit Cross-Department Request
                     </button>
                 </form>
             </div>
@@ -514,59 +620,89 @@ if (isset($_GET['success']) && $_GET['success'] === 'sent') {
     </div>
 </div>
 <script>
-// AJAX Actions (ለማሳያ ያህል የተቀመጡ ናቸው)
-function createCoreTask(e) {
-    e.preventDefault();
+// ── Auto-suggest target department based on request type ─────────────────────
+const deptSuggestions = {
+    'Repair'         : 'Engineering',
+    'Maintenance'    : 'Engineering',
+    'Manpower'       : 'Human Resource (HR)',
+    'Resource'       : 'Procurement / Property',
+    'Legal'          : 'Legal Service',
+    'Administrative' : '',
+    'Other'          : ''
+};
 
-    const formData = new FormData();
-    formData.append('action', 'create_task');
-    formData.append('title', document.getElementById('tk_title').value.trim());
-    formData.append('task_type', document.getElementById('tk_type').value);
-    formData.append('assigned_to', document.getElementById('tk_assign').value);
-    formData.append('description', document.getElementById('tk_desc').value.trim());
-    formData.append('due_date', document.getElementById('tk_due_date').value);
-    formData.append('priority', 'Medium');
+function suggestTargetDept(requestType) {
+    const suggestion   = deptSuggestions[requestType] || '';
+    const deptSelect   = document.getElementById('receiver_dept_id');
+    const preview      = document.getElementById('crossDeptPreview');
+    const previewText  = document.getElementById('previewText');
 
-    fetch('mgr_ajax.php', {
-        method: 'POST',
-        body: formData
-    }).then(res => res.json()).then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert(data.message || 'Unable to create task');
+    // Try to auto-select the matching option
+    let matched = false;
+    for (const opt of deptSelect.options) {
+        if (suggestion && opt.dataset.name && opt.dataset.name.includes(suggestion)) {
+            opt.selected = true;
+            matched = true;
+            break;
         }
-    }).catch(() => {
-        alert('Unable to reach the server.');
-    });
+    }
+
+    // Show preview banner
+    if (requestType && matched) {
+        previewText.textContent =
+            `This "${requestType}" request will be routed to the ${deptSelect.options[deptSelect.selectedIndex].text} department.`;
+        preview.classList.remove('d-none');
+    } else if (requestType) {
+        previewText.textContent = `Please manually select the target department for "${requestType}" requests.`;
+        preview.classList.remove('d-none');
+    } else {
+        preview.classList.add('d-none');
+    }
 }
 
-function requestEngineering(e) {
-    e.preventDefault();
-
-    const formData = new FormData();
-    formData.append('action', 'request_engineering');
-    formData.append('machine', document.getElementById('rm_machine').value.trim());
-    formData.append('description', document.getElementById('rm_desc').value.trim());
-
-    fetch('mgr_ajax.php', {
-        method: 'POST',
-        body: formData
-    }).then(res => res.json()).then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert(data.message || 'Unable to send engineering request');
-        }
-    }).catch(() => {
-        alert('Unable to reach the server.');
-    });
-}
-
+// ── Dispatch: mark request as In Progress via AJAX ───────────────────────────
 function dispatchRequest(taskId) {
-    alert('Dispatch dialog requested for task ID ' + taskId + '.');
+    if (!confirm('Mark this request as "In Progress" and assign to Engineering team?')) return;
+
+    const fd = new FormData();
+    fd.append('action',  'dispatch_request');
+    fd.append('task_id', taskId);
+
+    fetch('mgr_ajax.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Fade out the dispatched row
+                const btn = document.querySelector(`[onclick="dispatchRequest(${taskId})"]`);
+                if (btn) btn.closest('tr').style.opacity = '0.4';
+                showToast('Dispatched successfully!', 'success');
+            } else {
+                showToast(data.message || 'Dispatch failed.', 'danger');
+            }
+        })
+        .catch(() => showToast('Server unreachable.', 'danger'));
+}
+
+// ── Simple toast helper ───────────────────────────────────────────────────────
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer') ||
+                      (() => {
+                          const el = document.createElement('div');
+                          el.id = 'toastContainer';
+                          el.className = 'position-fixed bottom-0 end-0 p-3';
+                          el.style.zIndex = 9999;
+                          document.body.appendChild(el);
+                          return el;
+                      })();
+
+    const id   = 'toast_' + Date.now();
+    const html = `<div id="${id}" class="toast align-items-center text-bg-${type} border-0 show shadow rounded-3 mb-2" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body fw-semibold">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="document.getElementById('${id}').remove()"></button>
+                    </div></div>`;
+    container.insertAdjacentHTML('beforeend', html);
+    setTimeout(() => { const el = document.getElementById(id); if(el) el.remove(); }, 4000);
 }
 </script>
 

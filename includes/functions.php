@@ -1,7 +1,9 @@
 <?php
-function log_action($pdo, $user_id, $action, $details) {
-    $ip = $_SERVER['REMOTE_ADDR'];
-    $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$user_id, $action, $details, $ip]);
+// functions.php መስመር 2 አካባቢ
+if (!function_exists('log_action')) {
+    function log_action($pdo, $user_id, $action, $details) {
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)");
+        return $stmt->execute([$user_id, $action, $details]);
+    }
 }
 ?>

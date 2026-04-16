@@ -1,41 +1,54 @@
 <?php
-// በ dashboard.php ውስጥ የሚጨመር የ"ማሳወቂያ" ሰንጠረዥ
-$stmt = $pdo->prepare("SELECT r.*, u.full_name FROM maintenance_requests r 
-                       JOIN users u ON r.assigned_to = u.id 
-                       WHERE r.dept_id = ? AND r.status = 'Completed' AND r.is_verified = 0");
-$stmt->execute([$_SESSION['dept_id']]);
-$completed_tasks = $stmt->fetchAll();
+session_start();
+require_once '../includes/db.php';
+include '../includes/header_glass.php';
+
+$task_id = $_GET['id'] ?? null;
+if (!$task_id) { header("Location: dashboard.php"); exit(); }
+
+// የታስኩን ዝርዝር እና የሰራተኛውን ሪፖርት ማምጣት
+$stmt = $pdo->prepare("SELECT mr.*, u.full_name as emp_name 
+                     FROM maintenance_requests mr 
+                     JOIN users u ON mr.employee_id = u.id 
+                     WHERE mr.id = ?");
+$stmt->execute([$task_id]);
+$task = $stmt->fetch();
 ?>
 
-<div class="card shadow-sm mt-4 border-warning">
-    <div class="card-header bg-warning text-dark fw-bold">
-        <i class="bi bi-check-circle-fill"></i> መጠናቀቃቸው የተገለጹ ስራዎች (ለማረጋገጥ)
-    </div>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>ማሽን</th>
-                    <th>የሰራው ቴክኒሻን</th>
-                    <th>የጥገና ማስታወሻ</th>
-                    <th>ውሳኔ</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach($completed_tasks as $ct): ?>
-                <tr>
-                    <td><?php echo $ct['machine_name']; ?></td>
-                    <td><?php echo $ct['full_name']; ?></td>
-                    <td><small><?php echo $ct['completion_notes']; ?></small></td>
-                    <td>
-                        <form method="POST" action="approve_task.php">
-                            <input type="hidden" name="req_id" value="<?php echo $ct['id']; ?>">
-                            <button type="submit" name="approve" class="btn btn-sm btn-success">አረጋግጥና ለማናጀር አሳውቅ</button>
-                        </form>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+<div class="container py-5">
+    <div class="card glass-card shadow border-0">
+        <div class="card-body p-4">
+            <h4 class="fw-bold mb-4"><i class="bi bi-patch-check text-primary"></i> የስራ ፍተሻ (Verification)</h4>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>ማሽን/ርዕስ:</strong> <?php echo htmlspecialchars($task['machine_name']); ?></p>
+                    <p><strong>የተመደበው ሰራተኛ:</strong> <?php echo htmlspecialchars($task['emp_name']); ?></p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="badge bg-info p-2">Status: <?php echo $task['status']; ?></span>
+                </div>
+            </div>
+            <hr>
+            <div class="mb-4">
+                <h6><strong>የሰራተኛው የጥገና ሪፖርት:</strong></h6>
+                <div class="p-3 bg-light rounded border">
+                    <?php echo nl2br(htmlspecialchars($task['completion_notes'] ?? 'ምንም ሪፖርት አልተጻፈም')); ?>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <form action="approve_task.php" method="POST">
+                    <input type="hidden" name="task_id" value="<?php echo $task_id; ?>">
+                    <button type="submit" name="action" value="approve" class="btn btn-success px-4">
+                        <i class="bi bi-check-circle"></i> ስራውን አጽድቅ (Approve)
+                    </button>
+                    <button type="submit" name="action" value="reject" class="btn btn-danger px-4">
+                        <i class="bi bi-x-circle"></i> ስራው አልተጠናቀቀም (Reject)
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
+<?php include '../includes/footer_glass.php'; ?>

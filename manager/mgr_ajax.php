@@ -82,6 +82,39 @@ try {
 
         echo json_encode(['success' => true, 'message' => 'Engineering Maintenance Alerted']);
     }
+    elseif ($action === 'dispatch_request') {
+        // Only Engineering Manager can dispatch
+        if ($_SESSION['user_role'] !== 'Engineering Manager') {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized – Engineering Manager only']);
+            exit();
+        }
+
+        $task_id = (int)($_POST['task_id'] ?? 0);
+        if ($task_id < 1) {
+            echo json_encode(['success' => false, 'message' => 'Invalid task ID']);
+            exit();
+        }
+
+        // Verify task is still Pending
+        $check = $pdo->prepare("SELECT id, machine_name FROM maintenance_requests WHERE id = ? AND status = 'Pending'");
+        $check->execute([$task_id]);
+        $task = $check->fetch();
+
+        if (!$task) {
+            echo json_encode(['success' => false, 'message' => 'Task not found or already dispatched']);
+            exit();
+        }
+
+        $upd = $pdo->prepare(
+            "UPDATE maintenance_requests SET status = 'In Progress', assigned_to = ? WHERE id = ?");
+        $upd->execute([$user_id, $task_id]);
+
+        $full_name = $_SESSION['full_name'] ?? 'Eng. Manager';
+        log_action($pdo, $user_id, 'Request Dispatched',
+            "Engineering Manager ($full_name) dispatched request #$task_id ({$task['machine_name']}) to In Progress.");
+
+        echo json_encode(['success' => true, 'message' => 'Request dispatched successfully']);
+    }
     else {
         echo json_encode(['success' => false, 'message' => 'Unknown action']);
     }

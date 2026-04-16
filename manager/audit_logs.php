@@ -2,23 +2,24 @@
 session_start();
 require_once '../includes/db.php';
 
-// 1. Authentication & Role Check (Security First)
-if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['General Manager', 'Department Manager'])) {
+// 1. Authentication & Role Check
+$allowed_roles = ['General Manager', 'Department Manager', 'Engineering Manager'];
+if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $allowed_roles, true)) {
     header("Location: ../auth/login.php");
     exit();
 }
 
-$dept_id = $_SESSION['dept_id'];
+$dept_id   = (int)($_SESSION['dept_id']   ?? 0);
 $user_role = $_SESSION['user_role'];
 $full_name = $_SESSION['full_name'];
 
-// ስህተትን ለመከላከል $logs አስቀድሞ ባዶ Array መሆኑን እናረጋግጥ
-$logs = []; 
+$logs         = [];
 $where_clause = "";
-$params = [];
+$params       = [];
 
-// 2. Role-based Security (DM ከሆነ የራሱን ዲፓርትመንት ብቻ እንዲያይ መገደብ)
-if ($user_role === 'Department Manager') {
+// 2. Role-based scoping
+// General Manager → sees all; Dept Manager & Engineering Manager → own dept only
+if (in_array($user_role, ['Department Manager', 'Engineering Manager'], true)) {
     $where_clause = " WHERE u.dept_id = ? ";
     $params[] = $dept_id;
 }

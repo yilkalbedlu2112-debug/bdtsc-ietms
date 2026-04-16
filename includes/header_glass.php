@@ -151,19 +151,64 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>">
         <i class="bi bi-plus-square"></i> Create Task
     </a>
+    <!-- Fix 3: Corrected icon from bi-shield-lock to bi-tools -->
     <a href="<?php echo $base_url; ?>/manager/maintenance_list.php" class="<?php echo $current_page == 'maintenance_list.php' ? 'active' : ''; ?>">
-        <i class="bi bi-shield-lock"></i> Maintenance
+        <i class="bi bi-tools"></i> Maintenance Log
     </a>
-    <a href="<?php echo $base_url; ?>/manager/view_requests.php" class="<?php echo $current_page == 'view_requests.php' ? 'active' : ''; ?>">
-        <i class="bi bi-shield-lock"></i> View Requests
+    <!-- Fix 3: Corrected icon from bi-shield-lock to bi-inbox -->
+    <a href="<?php echo $base_url; ?>/manager/view_requests.php" class="<?php echo $current_page == 'view_requests.php' ? 'active' : ''; ?> position-relative">
+        <i class="bi bi-inbox"></i> Cross-Dept Requests
+        <?php
+            $notif_dm = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE receiver_dept_id = ? AND is_read_by_receiver = 0");
+            $notif_dm->execute([$_SESSION['dept_id'] ?? 0]);
+            $notif_dm_count = (int)$notif_dm->fetchColumn();
+            if ($notif_dm_count > 0):
+        ?>
+        <span class="badge rounded-pill bg-danger ms-auto" style="font-size:0.65rem;"><?php echo $notif_dm_count > 9 ? '9+' : $notif_dm_count; ?></span>
+        <?php endif; ?>
     </a>
     <a href="<?php echo $base_url; ?>/manager/productivity_analytics.php" class="<?php echo $current_page == 'productivity_analytics.php' ? 'active' : ''; ?>">
         <i class="bi bi-graph-up-arrow"></i> Productivity
     </a>
+    <a href="<?php echo $base_url; ?>/manager/audit_logs.php" class="<?php echo $current_page == 'audit_logs.php' ? 'active' : ''; ?>">
+        <i class="bi bi-shield-check"></i> Audit Logs
+    </a>
     <a href="<?php echo $base_url; ?>/manager/generate_report.php" class="<?php echo $current_page == 'generate_report.php' ? 'active' : ''; ?>">
         <i class="bi bi-file-earmark-pdf"></i> <?php echo __('reports'); ?>
     </a>
-    
+
+    <!-- Fix 5: Engineering Manager sidebar block -->
+            <?php elseif ($user_role === 'Engineering Manager'): ?>
+    <a href="<?php echo $base_url; ?>/manager/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">
+        <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?>
+    </a>
+    <a href="<?php echo $base_url; ?>/manager/maintenance_list.php" class="<?php echo $current_page == 'maintenance_list.php' ? 'active' : ''; ?>">
+        <i class="bi bi-tools"></i> Maintenance Log
+    </a>
+    <a href="<?php echo $base_url; ?>/manager/view_requests.php" class="<?php echo $current_page == 'view_requests.php' ? 'active' : ''; ?> position-relative">
+        <i class="bi bi-send-check"></i> Dispatch Center
+        <?php
+            $notif_eng = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE receiver_dept_id = ? AND is_read_by_receiver = 0");
+            $notif_eng->execute([$_SESSION['dept_id'] ?? 0]);
+            $notif_eng_count = (int)$notif_eng->fetchColumn();
+            if ($notif_eng_count > 0):
+        ?>
+        <span class="badge rounded-pill bg-danger ms-auto" style="font-size:0.65rem;"><?php echo $notif_eng_count > 9 ? '9+' : $notif_eng_count; ?></span>
+        <?php endif; ?>
+    </a>
+    <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>">
+        <i class="bi bi-plus-square"></i> Create Task
+    </a>
+    <a href="<?php echo $base_url; ?>/manager/productivity_analytics.php" class="<?php echo $current_page == 'productivity_analytics.php' ? 'active' : ''; ?>">
+        <i class="bi bi-graph-up-arrow"></i> Productivity
+    </a>
+    <a href="<?php echo $base_url; ?>/manager/audit_logs.php" class="<?php echo $current_page == 'audit_logs.php' ? 'active' : ''; ?>">
+        <i class="bi bi-shield-check"></i> Audit Logs
+    </a>
+    <a href="<?php echo $base_url; ?>/manager/generate_report.php" class="<?php echo $current_page == 'generate_report.php' ? 'active' : ''; ?>">
+        <i class="bi bi-file-earmark-pdf"></i> <?php echo __('reports'); ?>
+    </a>
+
             <?php elseif ($user_role === 'Deputy General Manager'): ?>
                 <a href="<?php echo $base_url; ?>/deputy_gm/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/manage_departments.php" class="<?php echo $current_page == 'manage_departments.php' ? 'active' : ''; ?>"><i class="bi bi-building"></i> <?php echo __('departments'); ?></a>

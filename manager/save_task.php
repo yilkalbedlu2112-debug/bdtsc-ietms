@@ -1,34 +1,82 @@
 <?php
 // manager/save_task.php
+// Saves internal core tasks (non-cross-dept) created via the Create Task page.
 session_start();
 require_once '../includes/db.php';
 
-if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Department Manager') {
+if (!isset($_SESSION['user_role']) ||
+    !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {
     header("Location: ../auth/login.php");
     exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $machine_name = trim($_POST['machine_name'] ?? '');
-    $priority = $_POST['priority'] ?? 'Medium';
-    $instructions = trim($_POST['instructions'] ?? '');
-    
-    $dept_id = $_SESSION['dept_id'];
-    $user_id = $_SESSION['user_id'];
-    
-    // Find Engineering Department Manager or just save the request unassigned to be handled by Engineering
-    $stmt = $pdo->prepare("SELECT id FROM departments WHERE dept_name = 'Engineering' LIMIT 1");
-    $stmt->execute();
-    $eng_dept_id = $stmt->fetchColumn();
-    
-    try {
-        $stmt = $pdo->prepare("INSERT INTO maintenance_requests (user_id, dept_id, target_dept_id, machine_name, issue_description, priority, status, task_type, created_at) VALUES (?, ?, ?, ?, ?, ?, 'Pending', 'Maintenance', NOW())");
-        $stmt->execute([$user_id, $dept_id, $eng_dept_id ?: null, $machine_name, $instructions, $priority]);
-        
-        log_action($pdo, $user_id, "Maintenance Request", "Requested maintenance for $machine_name");
-        header("Location: dashboard.php?msg=RequestSubmitted");
-        exit();
-    } catch (Exception $e) {
-        die("Error processing request: " . $e->getMessage());
-    }
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header("Location: create_task.php");
+    exit();
+}
+
+$user_id   = (int)($_SESSION['user_id']  ?? 0);
+$dept_id   = (int)($_SESSION['dept_id']  ?? 0);
+$user_role = $_SESSION['user_role'] ?? '';
+$full_name = $_SESSION['full_name'] ?? 'Unknown';
+
+$title       = trim($_POST['title']       ?? '');
+$description = trim($_POST['description'] ?? '');
+$priority    = $_POST['priority']         ?? 'Normal';
+$task_type   = $_POST['task_type']        ?? 'Administrative';
+$due_date    = $_POST['due_date']         ?? '';
+$assigned_to = !empty($_POST['assigned_to']) ? (int)$_POST['assigned_to'] : null;
+
+// Cross-dept fields (optional – only set when form includes them)
+$request_type      = $_POST['request_type']      ?? 'Administrative';
+$receiver_dept_id  = !empty($_POST['receiver_dept_id']) ? (int)$_POST['receiver_dept_id'] : $dept_id;
+
+// Basic validation
+if (empty($title) || empty($description) || empty($due_date)) {
+    $_SESSION['error'] = "Please fill in all required fields.";
+    header("Location: create_task.php");
+    exit();
+}
+
+// Status logic
+$status = ($user_role === 'Department Manager' || $user_role === 'Engineering Manager')
+        ? ($assigned_to ? 'Assigned' : 'Approved')
+        : 'Pending Approval';
+
+// Cross-dept flag
+$is_cross_dept = ($receiver_dept_id !== $dept_id) ? 1 : 0;
+
+try {
+    $sql = "INSERT INTO maintenance_requests
+                (user_id, dept_id, sender_dept_id, receiver_dept_id,
+                 assigned_to, machine_name, issue_description,
+                 priority, status, task_type, request_type,
+                 is_read_by_receiver, due_date, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        $user_id, $dept_id, $dept_id, $receiver_dept_id,
+        $assigned_to, $title, $description,
+        $priority, $status, $task_type, $request_type,
+        $is_cross_dept ? 0 : 1,   // unread for receiver if cross-dept
+        $due_date
+    ]);
+
+    $new_id = $pdo->lastInsertId();
+
+    $log_detail = "$user_role ($full_name) created task #$new_id"
+                . ($is_cross_dept ? " [Cross-Dept → dept ID $receiver_dept_id]" : "")
+                . " | Type: $task_type | Subject: $title";
+    log_action($pdo, $user_id, 'Task Created', $log_detail);
+
+    $_SESSION['success'] = "Task created and logged successfully!";
+    header("Location: dashboard.php");
+    exit();
+
+} catch (Exception $e) {
+    error_log("save_task error: " . $e->getMessage());
+    $_SESSION['error'] = "Error saving task: " . $e->getMessage();
+    header("Location: create_task.php");
+    exit();
 }

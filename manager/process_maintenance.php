@@ -1,55 +1,117 @@
 <?php
+// manager/process_maintenance.php
+// Handles cross-departmental request submissions from the dashboard modal.
 session_start();
 
-// 1. የዳታቤዝ ግንኙነት (Path አስተካክለናል)
-if (file_exists('../includes/db.php')) {
-    require_once '../includes/db.php';
-} else {
-    die("Database connection file missing at ../includes/db.php");
+require_once '../includes/db.php';
+
+// ── Auth guard ──────────────────────────────────────────────────────────────
+if (!isset($_SESSION['user_role']) ||
+    !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {
+    header("Location: ../auth/login.php");
+    exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_maintenance'])) {
-    
-    // 2. መረጃውን ከሴሽን እና ከፎርም መቀበል
-    $user_id = $_SESSION['user_id'] ?? null;
-    $dept_id = $_SESSION['dept_id'] ?? null; // የላኪው ዲፓርትመንት መታወቂያ
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_dept_request'])) {
+    header("Location: dashboard.php");
+    exit();
+}
 
-    if (!$user_id || !$dept_id) {
-        die("Error: Session expired. Please login again.");
-    }
+// ── Pull from session ────────────────────────────────────────────────────────
+$user_id        = (int)($_SESSION['user_id']   ?? 0);
+$sender_dept_id = (int)($_SESSION['dept_id']   ?? 0);
+$full_name      = $_SESSION['full_name']        ?? 'Unknown';
+$user_role      = $_SESSION['user_role']        ?? 'Unknown';
 
-    $machine_name = $_POST['machine_name'];
-    $description  = $_POST['issue_description'];
-    $priority     = $_POST['priority'] ?? 'Urgent';
-    $status       = $_POST['status'] ?? 'Pending';
-    $task_type    = $_POST['task_type'] ?? 'Maintenance';
+if (!$user_id || !$sender_dept_id) {
+    die("Session expired – please <a href='../auth/login.php'>login again</a>.");
+}
 
-    try {
-        // 3. SQL Query - ጥያቄውን ወደ ዳታቤዝ ማስገባት
-        // እዚህ ጋር user_id እና dept_id የላኪውን ዲፓርትመንት ይይዛሉ
-        $sql = "INSERT INTO maintenance_requests 
-                (user_id, dept_id, machine_name, issue_description, priority, status, task_type, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            $user_id, 
-            $dept_id, 
-            $machine_name, 
-            $description, 
-            $priority, 
-            $status, 
-            $task_type
-        ]);
+// ── Sanitise form inputs ─────────────────────────────────────────────────────
+$machine_name      = trim($_POST['machine_name']      ?? '');
+$issue_description = trim($_POST['issue_description'] ?? '');
+$priority          = $_POST['priority']    ?? 'Normal';
+$task_type         = $_POST['task_type']   ?? 'Maintenance';
+$request_type      = $_POST['request_type'] ?? 'Repair';
+$receiver_dept_id  = (int)($_POST['receiver_dept_id'] ?? 0);
 
-        // 4. ስኬታማ ከሆነ ወደ ዳሽቦርድ ይመለሳል
-        header("Location: dashboard.php?success=sent");
-        exit();
+// Allowed enum values for safety
+$allowed_priorities    = ['Normal', 'High', 'Emergency', 'Urgent'];
+$allowed_task_types    = ['Maintenance', 'Administrative', 'Production', 'Quality',
+                          'Breakdown', 'Safety', 'Planning', 'HR', 'Procurement',
+                          'Finance', 'Reporting', 'Audit', 'Legal', 'Other'];
+$allowed_request_types = ['Repair', 'Manpower', 'Resource', 'Legal', 'Maintenance',
+                          'Administrative', 'Other'];
 
-    } catch (PDOException $e) {
-        die("Database Error: " . $e->getMessage());
-    }
-} else {
+if (!in_array($priority,     $allowed_priorities,    true)) $priority     = 'Normal';
+if (!in_array($task_type,    $allowed_task_types,    true)) $task_type    = 'Maintenance';
+if (!in_array($request_type, $allowed_request_types, true)) $request_type = 'Other';
+
+// Validate mandatory fields
+if (empty($machine_name) || empty($issue_description) || $receiver_dept_id < 1) {
+    $_SESSION['error'] = "All required fields must be filled in.";
+    header("Location: dashboard.php");
+    exit();
+}
+
+// Confirm receiver department actually exists
+$dept_check = $pdo->prepare("SELECT dept_name FROM departments WHERE id = ?");
+$dept_check->execute([$receiver_dept_id]);
+$receiver_dept = $dept_check->fetch();
+
+if (!$receiver_dept) {
+    $_SESSION['error'] = "Invalid target department selected.";
+    header("Location: dashboard.php");
+    exit();
+}
+
+// ── DB insert ────────────────────────────────────────────────────────────────
+try {
+    $sql = "INSERT INTO maintenance_requests
+                (user_id,
+                 dept_id,
+                 sender_dept_id,
+                 receiver_dept_id,
+                 machine_name,
+                 issue_description,
+                 priority,
+                 status,
+                 task_type,
+                 request_type,
+                 is_read_by_receiver,
+                 created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, 0, NOW())";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        $user_id,
+        $sender_dept_id,   // legacy dept_id (sender's dept)
+        $sender_dept_id,   // sender_dept_id (explicit)
+        $receiver_dept_id,
+        $machine_name,
+        $issue_description,
+        $priority,
+        $task_type,
+        $request_type,
+    ]);
+
+    $new_id = $pdo->lastInsertId();
+
+    // ── Audit log ────────────────────────────────────────────────────────────
+    $receiver_name = htmlspecialchars($receiver_dept['dept_name']);
+    $log_detail = "$user_role ($full_name) submitted a cross-dept '$request_type' request "
+                . "(ID #$new_id) to $receiver_name dept. "
+                . "Subject: $machine_name | Priority: $priority.";
+
+    log_action($pdo, $user_id, 'Cross-Dept Request Submitted', $log_detail);
+
+    $_SESSION['success'] = "Your $request_type request was sent to the {$receiver_dept['dept_name']} Department successfully.";
+    header("Location: dashboard.php?success=sent");
+    exit();
+
+} catch (PDOException $e) {
+    error_log("process_maintenance PDO error: " . $e->getMessage());
+    $_SESSION['error'] = "Database error – please try again.";
     header("Location: dashboard.php");
     exit();
 }
