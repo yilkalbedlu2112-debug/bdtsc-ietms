@@ -1,7 +1,6 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-include '../includes/header_glass.php';
 
 $task_id = $_GET['id'] ?? null;
 if (!$task_id) { header("Location: dashboard.php"); exit(); }
@@ -13,6 +12,7 @@ $stmt = $pdo->prepare("SELECT mr.*, u.full_name as emp_name
                      WHERE mr.id = ?");
 $stmt->execute([$task_id]);
 $task = $stmt->fetch();
+include '../includes/header_glass.php';
 ?>
 
 <div class="container py-5">

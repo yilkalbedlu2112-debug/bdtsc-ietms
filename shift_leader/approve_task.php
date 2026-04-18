@@ -1,39 +1,61 @@
 <?php
+// 1. መጀመሪያ Session እና DB ፋይሎችን ጥራ (ከማንኛውም HTML በፊት)
 session_start();
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+// 2. የተጠቃሚውን ፍቃድ አረጋግጥ
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'Shift Leader') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+// 3. የፅድቅ (Approval) ሎጂክ
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['task_id'])) {
     $task_id = $_POST['task_id'];
-    $action = $_POST['action'];
+    $action = $_POST['action']; // 'approve' ወይም 'reject'
     $user_id = $_SESSION['user_id'];
 
     try {
         if ($action === 'approve') {
-            // ስራውን ሙሉ በሙሉ ማጠናቀቅ
             $status = 'Verified & Closed';
-            $msg = "ስራው በሽፍት ሊደር ጸድቋል።";
+            $msg = "ስራው በሽፍት ሊደር ተረጋግጦ ተዘግቷል። (Verified)";
         } else {
-            // ስራው አልተሰራም ተብሎ ወደ ሰራተኛው እንዲመለስ ማድረግ
             $status = 'In Progress';
-            $msg = "ስራው አልተጠናቀቀም ተብሎ በሽፍት ሊደር ተመልሷል። እባክዎ በድጋሚ ይስሩ።";
+            $msg = "ስራው አልተጠናቀቀም ተብሎ በሽፍት ሊደር ተመልሷል። (Rejected)";
         }
 
+        // ሀ. በ 'maintenance_requests' ሰንጠረዥ ውስጥ ሁኔታውን ማዘመን
         $stmt = $pdo->prepare("UPDATE maintenance_requests SET status = ? WHERE id = ?");
         $stmt->execute([$status, $task_id]);
 
-        // ለሰራተኛው ኖቲፊኬሽን መላክ
-        $task_data = $pdo->prepare("SELECT employee_id FROM maintenance_requests WHERE id = ?");
+        // ለ. የታስኩን ባለቤት (የሰራተኛውን ID) ማግኘት
+        // ማሳሰቢያ፡ በዳታቤዝህ ኮለሙ 'assigned_to' መሆኑን አረጋግጥ
+        $task_data = $pdo->prepare("SELECT assigned_to FROM maintenance_requests WHERE id = ?");
         $task_data->execute([$task_id]);
-        $emp_id = $task_data->fetch()['employee_id'];
+        $emp = $task_data->fetch();
+        $emp_id = $emp['assigned_to'] ?? null;
 
-        $notif = $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'task_update')");
-        $notif->execute([$emp_id, $msg]);
+        // ሐ. ለሰራተኛው ኖቲፊኬሽን መላክ
+        if ($emp_id) {
+            $notif = $pdo->prepare("INSERT INTO notifications (user_id, message, type, created_at) VALUES (?, ?, 'task_status', NOW())");
+            $notif->execute([$emp_id, $msg]);
+        }
 
-        log_action($pdo, $user_id, "Verify Task", "Task #$task_id status updated to $status");
+        // መ. በታሪክ መዝገብ (Audit Log) ላይ ማስፈር
+        if (function_exists('log_action')) {
+            log_action($pdo, $user_id, "Task Verification", "Task #$task_id was $action d by Shift Leader.");
+        }
 
-        echo "<script>alert('ውሳኔው ተመዝግቧል!'); window.location.href='dashboard.php';</script>";
-    } catch (Exception $e) {
-        die("Error: " . $e->getMessage());
+        // ገጹን ወደ ዳሽቦርድ መመለስ
+        header("Location: dashboard.php?status=updated");
+        exit();
+
+    } catch (PDOException $e) {
+        die("የዳታቤዝ ስህተት አጋጥሟል፦ " . $e->getMessage());
     }
+} else {
+    // ያለ ፎርም በቀጥታ ገጹ ቢከፈት ወደ ዳሽቦርድ ይመልሰው
+    header("Location: dashboard.php");
+    exit();
 }

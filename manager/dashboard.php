@@ -388,9 +388,9 @@ if (isset($_GET['success']) && $_GET['success'] === 'sent') {
                                         </span>
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="dispatchRequest(<?php echo (int)$task['id']; ?>)">
-                                            <i class="bi bi-box-arrow-in-right me-1"></i> Dispatch
-                                        </button>
+                                      <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="dispatchRequest(<?php echo (int)$task['id']; ?>)">
+                                          <i class="bi bi-box-arrow-in-right me-1"></i> Dispatch
+                                      </button>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -401,8 +401,42 @@ if (isset($_GET['success']) && $_GET['success'] === 'sent') {
             </div>
         </div>
     </div>
-    <?php endif; ?>
 
+    <div class="modal fade" id="dispatchModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i>Assign Technician</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="process_dispatch.php" method="POST">
+                    <div class="modal-body p-4">
+                        <input type="hidden" name="request_id" id="modal_request_id">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted small">SELECT MAINTENANCE STAFF</label>
+                            <select name="technician_id" class="form-select bg-light border-0 py-2" required>
+                                <option value="">-- Choose Specialist --</option>
+                                <?php if (!empty($assignable_users)): ?>
+                                    <?php foreach($assignable_users as $u): ?>
+                                        <option value="<?= $u['id']; ?>">
+                                            <?= htmlspecialchars($u['full_name']); ?> (<?= $u['user_role']; ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="submit" name="confirm_dispatch" class="btn btn-primary w-100 rounded-pill fw-bold py-2 shadow">
+                            Confirm & Dispatch Task
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
     <div class="card glass-card border-0 shadow-sm mt-4">
         <div class="card-header bg-transparent border-0 pt-4 pb-2">
             <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-bar-graph text-success me-2"></i>Advanced Reporting</h5>
@@ -661,28 +695,24 @@ function suggestTargetDept(requestType) {
 }
 
 // ── Dispatch: mark request as In Progress via AJAX ───────────────────────────
+// ── Dispatch: Open Technician Selection Modal ──────────────────────────────
 function dispatchRequest(taskId) {
-    if (!confirm('Mark this request as "In Progress" and assign to Engineering team?')) return;
+    // 1. የታስኩን ID በሞዳሉ ውስጥ ባለው Hidden input ላይ ይጭናል
+    const modalInput = document.getElementById('modal_request_id');
+    if (modalInput) {
+        modalInput.value = taskId;
+    }
 
-    const fd = new FormData();
-    fd.append('action',  'dispatch_request');
-    fd.append('task_id', taskId);
-
-    fetch('mgr_ajax.php', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                // Fade out the dispatched row
-                const btn = document.querySelector(`[onclick="dispatchRequest(${taskId})"]`);
-                if (btn) btn.closest('tr').style.opacity = '0.4';
-                showToast('Dispatched successfully!', 'success');
-            } else {
-                showToast(data.message || 'Dispatch failed.', 'danger');
-            }
-        })
-        .catch(() => showToast('Server unreachable.', 'danger'));
+    // 2. የ Dispatch ሞዳሉን ይከፍታል
+    const dispatchModalEl = document.getElementById('dispatchModal');
+    if (dispatchModalEl) {
+        const myModal = new bootstrap.Modal(dispatchModalEl);
+        myModal.show();
+    } else {
+        console.error("Dispatch Modal not found in the HTML!");
+        showToast('Error: Dispatch modal missing.', 'danger');
+    }
 }
-
 // ── Simple toast helper ───────────────────────────────────────────────────────
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer') ||
@@ -703,6 +733,19 @@ function showToast(message, type = 'success') {
                     </div></div>`;
     container.insertAdjacentHTML('beforeend', html);
     setTimeout(() => { const el = document.getElementById(id); if(el) el.remove(); }, 4000);
+}
+function dispatchRequest(taskId) {
+    // 1. የታስኩን ID በሞዳሉ ውስጥ ባለው hidden input ላይ መጫኑን ያረጋግጣል
+    var input = document.getElementById('modal_request_id');
+    if(input) {
+        input.value = taskId;
+        
+        // 2. ሞዳሉን በ Bootstrap ለመክፈት
+        var myModal = new bootstrap.Modal(document.getElementById('dispatchModal'));
+        myModal.show();
+    } else {
+        alert("Error: Modal input not found!");
+    }
 }
 </script>
 

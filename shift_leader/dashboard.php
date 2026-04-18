@@ -13,10 +13,10 @@ $dept_id = $_SESSION['dept_id'];
 $full_name = $_SESSION['full_name'];
 
 // 2. የዲፓርትመንቱን ስም ዳይናሚክ ለማድረግ (ከዲቢ)
-$dept_stmt = $pdo->prepare("SELECT name FROM departments WHERE id = ?");
+$dept_stmt = $pdo->prepare("SELECT dept_name FROM departments WHERE id = ?");
 $dept_stmt->execute([$dept_id]);
 $dept_info = $dept_stmt->fetch();
-$dept_name = $dept_info['name'] ?? "Production Unit";
+$dept_name = $dept_info['deptname'] ?? "Production Unit";
 
 // 3. እንደ ዲፓርትመንቱ አይነት የገጽታ ቀለም (Theme) መምረጥ
 $theme_color = "primary";
@@ -136,6 +136,7 @@ include '../includes/header_glass.php';
                                             </div>
                                         </div>
                                     </td>
+                                    
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
