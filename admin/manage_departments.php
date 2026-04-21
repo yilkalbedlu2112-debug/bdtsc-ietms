@@ -117,7 +117,7 @@ if (isset($_GET['edit_id'])) {
                             <tr>
                                 <td><?php echo $dept['id']; ?></td>
                                 <td><?php echo htmlspecialchars($dept['dept_name']); ?></td>
-                                <td><?php echo htmlspecialchars($dept['description']); ?></td>
+                                <td><?php echo htmlspecialchars($dept['description'] ?? ''); ?></td>
                                 <td>
                                     <a href="manage_departments.php?edit_id=<?php echo $dept['id']; ?>" class="btn btn-sm btn-info text-white"><i class="bi bi-pencil-square"></i></a>
                                     <form method="POST" class="d-inline-block" style="margin:0;" onsubmit="return confirm('Delete this department?');">

@@ -21,7 +21,7 @@ if (isset($_POST['login_btn'])) {
         $_SESSION['full_name'] = $user['full_name'];
         $_SESSION['dept_id'] = $user['dept_id'];
         $_SESSION['dept_name'] = $user['dept_name'] ?? 'General';
-
+$_SESSION['profile_pic'] = !empty($user['profile_pic']) ? $user['profile_pic'] : 'default_user.jpg';
         // ድርጊቱን መመዝገብ
         if (function_exists('log_action')) {
             log_action($pdo, $user['id'], "Login", "User logged into the system");
@@ -57,10 +57,6 @@ if (isset($_POST['login_btn'])) {
             case 'Technician':
             case 'Electrician':
             case 'Lab Analyst':
-                header("Location: ../technician/dashboard.php");
-                break;
-
-            // ኦፊሰር እና ሌሎች ቢሮ ነክ ሮሎች እዚህ ጋር ተካተዋል
             case 'Employee':
             case 'Officer':      
             case 'Accountant':   

@@ -52,11 +52,13 @@ $staff_data = $staff_perf->fetchAll();
 
 // 4. Monthly Trend Data (Real Data from Database)
 $trend_stmt = $pdo->prepare("
-    SELECT DATE_FORMAT(created_at, '%b') as month, COUNT(*) as count 
+    SELECT 
+        DATE_FORMAT(created_at, '%b') as month, 
+        COUNT(*) as count 
     FROM maintenance_requests 
     WHERE dept_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-    GROUP BY DATE_FORMAT(created_at, '%m')
-    ORDER BY created_at ASC
+    GROUP BY DATE_FORMAT(created_at, '%m'), DATE_FORMAT(created_at, '%b')
+    ORDER BY MIN(created_at) ASC
 ");
 $trend_stmt->execute([$dept_id]);
 $trend_results = $trend_stmt->fetchAll();
