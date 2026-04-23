@@ -97,5 +97,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             echo json_encode(['status' => 'error', 'message' => 'Assignment failed: ' . $e->getMessage()]);
         }
     }
+
+    // ---------------------------------------------------------------
+    // Submit Alert to Shift Leader
+    // ---------------------------------------------------------------
+    if ($action === 'submit_alert') {
+        $machine_name = trim($_POST['machine_name']);
+        $issue_description = trim($_POST['issue_description']);
+        $priority = $_POST['priority'];
+        $dept_id = $_SESSION['dept_id'];
+        $user_id = $_SESSION['user_id'];
+
+        if (empty($machine_name) || empty($issue_description)) {
+            echo json_encode(['status' => 'error', 'message' => 'Machine name and issue description are required.']);
+            exit;
+        }
+
+        try {
+            // Find Shift Leader for the department
+            $stmt = $pdo->prepare("SELECT id, full_name, email FROM users WHERE dept_id = ? AND user_role = 'Shift Leader' LIMIT 1");
+            $stmt->execute([$dept_id]);
+            $shift_leader = $stmt->fetch();
+
+            if (!$shift_leader) {
+                echo json_encode(['status' => 'error', 'message' => 'No Shift Leader found for this department.']);
+                exit;
+            }
+
+            // Insert alert
+            $stmt = $pdo->prepare("INSERT INTO maintenance_requests 
+                (task_type, user_id, dept_id, assigned_to, machine_name, issue_description, priority, status, sender_dept_id, request_type, is_read_by_receiver) 
+                VALUES ('Alert', ?, ?, ?, ?, ?, ?, 'Pending Approval', ?, 'Maintenance', 0)");
+            
+            $stmt->execute([$user_id, $dept_id, $shift_leader['id'], $machine_name, $issue_description, $priority, $dept_id]);
+
+            $alertId = $pdo->lastInsertId();
+
+            // Audit Log
+            log_action($pdo, $user_id, "Alert Submission", "Supervisor submitted alert #$alertId to Shift Leader: " . $shift_leader['full_name']);
+
+            echo json_encode(['status' => 'success', 'message' => 'Alert submitted successfully to Shift Leader.']);
+        } catch (PDOException $e) {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+    }
 }
 ?>

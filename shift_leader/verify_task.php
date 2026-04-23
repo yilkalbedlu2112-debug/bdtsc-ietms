@@ -5,10 +5,30 @@ require_once '../includes/db.php';
 $task_id = $_GET['id'] ?? null;
 if (!$task_id) { header("Location: dashboard.php"); exit(); }
 
+// Handle POST for verify & close
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'verify_close') {
+    $task_id = $_POST['task_id'];
+    $user_id = $_SESSION['user_id'];
+    
+    try {
+        $stmt = $pdo->prepare("UPDATE maintenance_requests SET is_verified = 1, status = 'Completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $stmt->execute([$task_id]);
+        
+        // Audit Log
+        log_action($pdo, $user_id, "Task Verification", "Shift Leader verified and closed task #$task_id");
+        
+        echo "<script>alert('Task verified and closed successfully!'); window.location.href='dashboard.php';</script>";
+        exit();
+    } catch (PDOException $e) {
+        echo "<script>alert('Error: " . $e->getMessage() . "'); window.location.href='dashboard.php';</script>";
+        exit();
+    }
+}
+
 // የታስኩን ዝርዝር እና የሰራተኛውን ሪፖርት ማምጣት
 $stmt = $pdo->prepare("SELECT mr.*, u.full_name as emp_name 
                      FROM maintenance_requests mr 
-                     JOIN users u ON mr.employee_id = u.id 
+                     JOIN users u ON mr.assigned_to = u.id 
                      WHERE mr.id = ?");
 $stmt->execute([$task_id]);
 $task = $stmt->fetch();
@@ -38,13 +58,10 @@ include '../includes/header_glass.php';
             </div>
 
             <div class="d-flex gap-2">
-                <form action="approve_task.php" method="POST">
+                <form action="verify_task.php" method="POST">
                     <input type="hidden" name="task_id" value="<?php echo $task_id; ?>">
-                    <button type="submit" name="action" value="approve" class="btn btn-success px-4">
-                        <i class="bi bi-check-circle"></i> ስራውን አጽድቅ (Approve)
-                    </button>
-                    <button type="submit" name="action" value="reject" class="btn btn-danger px-4">
-                        <i class="bi bi-x-circle"></i> ስራው አልተጠናቀቀም (Reject)
+                    <button type="submit" name="action" value="verify_close" class="btn btn-success px-4">
+                        <i class="bi bi-check-circle"></i> Verify & Close
                     </button>
                 </form>
             </div>

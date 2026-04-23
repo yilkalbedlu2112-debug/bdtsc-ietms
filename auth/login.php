@@ -12,18 +12,19 @@
         :root {
             --bdtsc-color: #28687F;
             --bdtsc-dark: #1e4f61;
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #28687F 100%);
+            --bg-gradient: linear-gradient(135deg, #0f54f5 0%, #12ace4 100%);
         }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: var(--bg-gradient);
-            height: 100vh;
+            /* ለተለያዩ ስክሪኖች ተስማሚ እንዲሆን (Flexibility) */
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0;
-            overflow: hidden;
+            padding: 20px; /* በስልክ ሲከፈት ከዳር እንዳይጣበቅ */
         }
 
         .login-card {
@@ -31,10 +32,17 @@
             backdrop-filter: blur(10px);
             width: 100%;
             max-width: 420px;
-            padding: 40px;
+            padding: 30px; /* ከ 40px ወደ 30px ቀንሼዋለሁ (ለስልክ እንዲመች) */
             border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            transition: transform 0.3s ease;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* በኮምፒውተር ላይ ሲሆን Padding እንዲጨምር */
+        @media (min-width: 768px) {
+            .login-card {
+                padding: 45px;
+            }
         }
 
         .brand-icon {
@@ -48,7 +56,6 @@
             justify-content: center;
             margin: 0 auto 20px;
             font-size: 28px;
-            box-shadow: 0 10px 15px -3px rgba(40, 104, 127, 0.3);
         }
 
         .form-control {
@@ -56,19 +63,19 @@
             border-radius: 12px;
             padding: 12px 16px;
             transition: all 0.3s ease;
+            font-size: 15px; /* ለንባብ ምቹ እንዲሆን */
         }
 
         .form-control:focus {
             border-color: var(--bdtsc-color);
             box-shadow: 0 0 0 4px rgba(40, 104, 127, 0.1);
-            outline: none;
         }
 
         .btn-bdtsc {
             background-color: var(--bdtsc-color);
             color: white;
             border-radius: 12px;
-            padding: 14px;
+            padding: 12px;
             font-weight: 700;
             border: none;
             transition: all 0.3s ease;
@@ -86,84 +93,77 @@
             color: var(--bdtsc-color);
             text-decoration: none;
             font-weight: 600;
-            font-size: 0.9rem;
-            transition: 0.3s;
+            font-size: 0.85rem;
             display: inline-flex;
             align-items: center;
             gap: 5px;
         }
 
-        .back-home:hover {
-            color: var(--bdtsc-dark);
-            text-decoration: underline;
-        }
-
-        .alert {
-            border: none;
-            border-radius: 12px;
+        /* በስልክ ላይ ፅሁፎች ትንሽ እንዲያንሱ */
+        @media (max-width: 480px) {
+            h3 { font-size: 1.25rem; }
+            .small { font-size: 0.75rem; }
+            .login-card { border-radius: 20px; }
         }
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <div class="text-end mb-2">
-        <a href="?lang=en" class="badge text-decoration-none border text-dark">EN</a>
-        <a href="?lang=am" class="badge text-decoration-none border text-dark">አማ</a>
+    <div class="text-end mb-2 no-print">
+        <a href="?lang=en" class="badge text-decoration-none border text-dark fw-normal">EN</a>
+        <a href="?lang=am" class="badge text-decoration-none border text-dark fw-normal">አማ</a>
     </div>
 
     <div class="text-center mb-4">
-        <img src="../assets/images/bdtsc_logo.png" alt="BDTSC Logo" style="width: 70px; margin-bottom: 15px;">
+        <img src="../assets/images/bdtsc_logo.png" alt="BDTSC Logo" style="width: 65px; margin-bottom: 10px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2942/2942504.png';">
         <h3 class="fw-bold mb-1" style="color: var(--bdtsc-color);">BDTSC - IETMS</h3>
-        <p class="text-muted small">Industrial workers work control system</p>
+        <p class="text-muted small">Industrial Task Management System</p>
     </div>
 
-        <?php if (isset($_GET['success'])): ?>
-            <div class="alert alert-success py-2 mb-4 rounded-3 small border-0 shadow-sm">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                <?php echo htmlspecialchars($_GET['success']); ?>
-            </div>
-        <?php endif; ?>
+    <?php if (isset($_GET['success'])): ?>
+        <div class="alert alert-success py-2 mb-3 small border-0 shadow-sm rounded-3">
+            <i class="bi bi-check-circle-fill me-2"></i> <?php echo htmlspecialchars($_GET['success']); ?>
+        </div>
+    <?php endif; ?>
 
-        <?php if (isset($_GET['error'])): ?>
-            <div class="alert alert-danger py-2 mb-4 rounded-3 small border-0 shadow-sm">
-                <i class="bi bi-exclamation-circle-fill me-2"></i>
-                <?php echo htmlspecialchars($_GET['error']); ?>
-            </div>
-        <?php endif; ?>
+    <?php if (isset($_GET['error'])): ?>
+        <div class="alert alert-danger py-2 mb-3 small border-0 shadow-sm rounded-3">
+            <i class="bi bi-exclamation-circle-fill me-2"></i> <?php echo htmlspecialchars($_GET['error']); ?>
+        </div>
+    <?php endif; ?>
+    
+    <form action="login_process.php" method="POST">
+        <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary">Email / ኢሜይል</label>
+            <input type="email" name="email" class="form-control" placeholder="name@bdtsc.com" required>
+        </div>
         
-        <form action="login_process.php" method="POST">
-            <div class="mb-3">
-                <label class="form-label small fw-bold text-secondary">Email / ኢሜይል</label>
-                <input type="email" name="email" class="form-control" placeholder="example@bdtsc.com" required>
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label small fw-bold text-secondary mb-0">Password / የይለፍ ቃል</label>
+                <a href="forgot_password.php" class="small text-decoration-none fw-bold" style="color: var(--bdtsc-color); font-size: 11px;">Forgot? / ረስተዋል?</a>
             </div>
-            
-            <div class="mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label small fw-bold text-secondary mb-0">Password / የይለፍ ቃል</label>
-                    <a href="forgot_password.php" class="small text-decoration-none fw-bold" style="color: var(--bdtsc-color);">Forgot? / ረስተዋል?</a>
-                </div>
-                <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-            </div>
-
-            <div class="d-grid mb-3">
-                <button type="submit" name="login_btn" class="btn btn-bdtsc">
-                    Login / ግባ <i class="bi bi-arrow-right-short ms-1"></i>
-                </button>
-            </div>
-        </form>
-
-        <div class="text-center mt-3">
-            <a href="../index.php" class="back-home">
-                <i class="bi bi-house-door"></i> Back to Home / ወደ ዋናው ገጽ ተመለስ
-            </a>
+            <input type="password" name="password" class="form-control" placeholder="••••••••" required>
         </div>
 
-        <div class="text-center mt-4 pt-3 border-top">
-            <p class="text-muted" style="font-size: 11px; margin-bottom: 0;">
-                &copy; 2026 Bahir Dar Textile Share Company (BDTSC)
-            </p>
+        <div class="d-grid mb-3">
+            <button type="submit" name="login_btn" class="btn btn-bdtsc">
+                Login / ግባ <i class="bi bi-arrow-right-short ms-1"></i>
+            </button>
         </div>
+    </form>
+
+    <div class="text-center mt-2">
+        <a href="../index.php" class="back-home">
+            <i class="bi bi-house-door"></i> Back to Home / ወደ ዋናው ገጽ
+        </a>
+    </div>
+
+    <div class="text-center mt-4 pt-3 border-top">
+        <p class="text-muted" style="font-size: 10px; margin-bottom: 0;">
+            &copy; 2026 Bahir Dar Textile Share Company (BDTSC)
+        </p>
     </div>
 </div>
 

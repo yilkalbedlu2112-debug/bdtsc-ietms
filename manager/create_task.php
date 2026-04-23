@@ -126,7 +126,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $log_details = "$user_role ($full_name) created task #$new_task_id for $dept_name.";
             log_action($pdo, $user_id, 'Task Created', $log_details);
 
-            $_SESSION['success'] = "ተግባሩ በተሳካ ሁኔታ ተመዝግቧል!";
+            // Insert notification for recipient department manager if cross-department task
+            $receiver_dept_id = $_POST['receiver_dept_id'] ?? $dept_id;
+            if ($receiver_dept_id != $dept_id) {
+                $notif_msg = "$full_name created a cross-department task #$new_task_id for your department.";
+                $notif_sql = "INSERT INTO notifications (user_id, dept_id, role_target, message, type, created_at) SELECT u.id, ?, 'Department Manager', ?, 'task_assignment', NOW() FROM users u WHERE u.dept_id = ? AND u.user_role = 'Department Manager'";
+                $notif_stmt = $pdo->prepare($notif_sql);
+                $notif_stmt->execute([$receiver_dept_id, $notif_msg, $receiver_dept_id]);
+
+                // Also notify Shift Leaders in the receiving department
+                $notif_msg_sl = "$full_name created a cross-department task #$new_task_id for your department.";
+                $notif_sql_sl = "INSERT INTO notifications (user_id, dept_id, role_target, message, type, created_at) SELECT u.id, ?, 'Shift Leader', ?, 'task_assignment', NOW() FROM users u WHERE u.dept_id = ? AND u.user_role = 'Shift Leader'";
+                $notif_stmt_sl = $pdo->prepare($notif_sql_sl);
+                $notif_stmt_sl->execute([$receiver_dept_id, $notif_msg_sl, $receiver_dept_id]);
+            }
             header("Location: dashboard.php");
             exit();
         } catch (Exception $e) {

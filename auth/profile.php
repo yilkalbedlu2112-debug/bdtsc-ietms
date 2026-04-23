@@ -7,14 +7,22 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// 1. መጀመሪያ ዳታውን ከዳታቤዝ እናምጣ
 $user_id = $_SESSION['user_id'];
 $stmt = $pdo->prepare("SELECT u.*, d.dept_name, d.dept_type FROM users u LEFT JOIN departments d ON u.dept_id = d.id WHERE u.id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
+// 2. ሄደሩን include እናድርግ (ይህ ፋይል $base_url እና $image_path-ን ይይዛል)
 include '../includes/header_glass.php';
-?>
 
+// 3. (ከተፈለገ) $image_path እዚህ ገጽ ላይ በትክክል መኖሩን ለማረጋገጥ ይህን መስመር ጨምር
+if (!isset($image_path)) {
+    $base_url = '/bdtsc-ietms'; 
+    $profile_pic = $user['profile_pic'] ?? 'default_user.jpg';
+    $image_path = $base_url . "/assets/images/" . $profile_pic;
+}
+?>
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3><i class="bi bi-person-lines-fill me-2 text-primary"></i> My Profile</h3>
@@ -22,42 +30,61 @@ include '../includes/header_glass.php';
     </div>
 
     <div class="row g-4">
-        <!-- Profile Info -->
         <div class="col-lg-5">
             <div class="card border-0 shadow-sm glass-card p-4 h-100">
                 <div class="text-center mb-4">
-                    <img src="../assets/images/deputy Manager.jpg" class="rounded-circle shadow" width="120" height="120" style="object-fit: cover; border: 4px solid var(--bg-gray);">
+                    <img src="<?php echo $image_path; ?>" 
+                         class="rounded-circle shadow" 
+                         width="120" height="120" 
+                         style="object-fit: cover; border: 4px solid #fff;"
+                         onerror="this.src='https://ui-avatars.com/api/?name=<?php echo urlencode($user['full_name']); ?>&background=random&color=fff';">
+                    
                     <h4 class="fw-bold mt-3"><?php echo htmlspecialchars($user['full_name']); ?></h4>
-                    <span class="badge bg-soft-primary text-primary"><?php echo htmlspecialchars($user['user_role']); ?></span>
+                    <span class="badge bg-soft-primary text-primary mb-3"><?php echo htmlspecialchars($user['user_role']); ?></span>
+
+                    <form action="upload_process.php" method="POST" enctype="multipart/form-data" class="mt-2">
+                        <div class="input-group input-group-sm mx-auto" style="max-width: 250px;">
+                            <input type="file" name="profile_image" class="form-control form-control-sm" accept="image/*" required>
+                            <button class="btn btn-primary btn-sm" type="submit" name="submit">
+                                <i class="bi bi-upload"></i>
+                            </button>
+                        </div>
+                        <p class="text-muted mt-2" style="font-size: 0.75rem;">JPG or PNG, Max 2MB</p>
+                    </form>
                 </div>
                 
+                <?php if(isset($_GET['msg'])): ?>
+                    <div class="alert alert-info py-2 small text-center border-0 mb-3" style="background: rgba(13, 110, 253, 0.1); color: #0d6efd;">
+                        <i class="bi bi-info-circle me-1"></i> <?php echo htmlspecialchars($_GET['msg']); ?>
+                    </div>
+                <?php endif; ?>
+
                 <hr class="opacity-25 my-4">
                 
                 <div class="mb-3">
                     <label class="small text-muted fw-bold text-uppercase">Username</label>
-                    <div class="fw-medium p-2 bg-light rounded bg-opacity-50">
-                        <i class="bi bi-person me-2"></i><?php echo htmlspecialchars($user['full_name']); ?>
+                    <div class="fw-medium p-2 bg-light rounded bg-opacity-50 text-dark">
+                        <i class="bi bi-person me-2 text-primary"></i><?php echo htmlspecialchars($user['full_name']); ?>
                     </div>
                 </div>
                 
                 <div class="mb-3">
                     <label class="small text-muted fw-bold text-uppercase">Department</label>
-                    <div class="fw-medium p-2 bg-light rounded bg-opacity-50">
-                        <i class="bi bi-building me-2"></i><?php echo htmlspecialchars($user['dept_name'] ?? 'None'); ?> 
+                    <div class="fw-medium p-2 bg-light rounded bg-opacity-50 text-dark">
+                        <i class="bi bi-building me-2 text-primary"></i><?php echo htmlspecialchars($user['dept_name'] ?? 'None'); ?> 
                         <span class="text-muted small">(<?php echo htmlspecialchars($user['dept_type'] ?? 'N/A'); ?>)</span>
                     </div>
                 </div>
                 
                 <div class="mb-3">
                     <label class="small text-muted fw-bold text-uppercase">Email</label>
-                    <div class="fw-medium p-2 bg-light rounded bg-opacity-50">
-                        <i class="bi bi-envelope me-2"></i><?php echo htmlspecialchars($user['email'] ?? 'Not provided'); ?>
+                    <div class="fw-medium p-2 bg-light rounded bg-opacity-50 text-dark">
+                        <i class="bi bi-envelope me-2 text-primary"></i><?php echo htmlspecialchars($user['email'] ?? 'Not provided'); ?>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Security / Password Update -->
         <div class="col-lg-7">
             <div class="card border-0 shadow-sm glass-card p-4 h-100">
                 <h5 class="fw-bold mb-4 border-bottom pb-2"><i class="bi bi-shield-lock me-2 text-warning"></i> Password Management</h5>
@@ -119,7 +146,7 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
     }
 
     const btn = document.getElementById('btnUpdate');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processing...';
     btn.disabled = true;
 
     let formData = new FormData();

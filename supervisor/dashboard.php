@@ -32,9 +32,14 @@ include '../includes/header_glass.php';
     <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-person-badge"></i> <?php echo $dept_name; ?> Supervisor Panel</h2>
-        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#createTaskModal">
-            <i class="bi bi-tools"></i> Request Maintenance / Create Task
-        </button>
+        <div>
+            <button class="btn btn-warning me-2" data-bs-toggle="modal" data-bs-target="#submitAlertModal">
+                <i class="bi bi-exclamation-triangle"></i> Submit Alert
+            </button>
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                <i class="bi bi-tools"></i> Request Maintenance / Create Task
+            </button>
+        </div>
     </div>
 
     <div class="row mb-4">
@@ -145,6 +150,35 @@ include '../includes/header_glass.php';
     </div>
 </div>
 
+<div class="modal fade" id="submitAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form id="submitAlertForm">
+            <div class="modal-content">
+                <div class="modal-header"><h5>Submit Alert to Shift Leader</h5></div>
+                <div class="modal-body">
+                    <input type="hidden" name="action" value="submit_alert">
+                    <div class="mb-3"><label>Machine Name</label><input type="text" name="machine_name" class="form-control" required></div>
+                    <div class="mb-3"><label>Issue Description</label><textarea name="issue_description" class="form-control" required></textarea></div>
+                    <div class="mb-3">
+                        <label>Priority</label>
+                        <select name="priority" class="form-select">
+                            <option value="Normal">Normal</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                            <option value="Emergency">Emergency</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-warning">Submit Alert</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="assignModal" tabindex="-1">
     <div class="modal-dialog">
         <form id="assignTaskForm">
@@ -183,8 +217,8 @@ function openAssignModal(id) {
     myModal.show();
 }
 
-// AJAX for Create & Assign
-$('#createTaskForm, #assignTaskForm').on('submit', function(e){
+// AJAX for Create & Assign & Alert
+$('#createTaskForm, #assignTaskForm, #submitAlertForm').on('submit', function(e){
     e.preventDefault();
     $.post('sup_ajax.php', $(this).serialize(), function(res){
         alert(res.message);

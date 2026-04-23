@@ -36,7 +36,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // UC-11: ስራው ሲጠናቀቅ ሰዓት መመዝገብ
                 if ($status === 'Completed') {
-                    $sql .= ", completed_at = NOW() ";
+                    // Instead of completing, set to In Progress for verification
+                    $sql = "UPDATE maintenance_requests SET status = 'In Progress', is_verified = 0 ";
+                    $params = [$task_id];
+                    
+                    // Notify Shift Leader
+                    // Find Shift Leader for the department
+                    $stmtSL = $pdo->prepare("SELECT id FROM users WHERE dept_id = ? AND user_role = 'Shift Leader' LIMIT 1");
+                    $stmtSL->execute([$current_task['dept_id']]);
+                    $shift_leader = $stmtSL->fetch();
+                    
+                    if ($shift_leader) {
+                        $notif = $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'verification_pending')");
+                        $notif->execute([$shift_leader['id'], "Task #$task_id is ready for verification."]);
+                    }
                 }
                 
                 $sql .= "WHERE id = ?";
@@ -45,7 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($update->execute($params)) {
                     // UC-16: Audit Log መመዝገብ (የ log_action ፋንክሽን በ functions.php ውስጥ መኖሩን እርግጠኛ ሁን)
                     if (function_exists('log_action')) {
-                        log_action($pdo, $user_id, "Task Update", "Task #$task_id changed to $status");
+                        $log_status = ($status === 'Completed') ? 'submitted for verification' : $status;
+                        log_action($pdo, $user_id, "Task Update", "Task #$task_id $log_status");
                     }
 
                     echo json_encode([

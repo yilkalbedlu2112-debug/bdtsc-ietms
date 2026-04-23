@@ -24,9 +24,17 @@ elseif (strpos($dept_name, 'Garment') !== false) $theme_color = "danger";
 
 // ሀ. ከማናጀር/ሱፐርቫይዘር የተላኩ አዳዲስ ስራዎች (Assigned to this Shift Leader)
 // እነዚህ ገና ለሰራተኛ ያልተመደቡ ስራዎች ናቸው
-$stmt = $pdo->prepare("SELECT * FROM tasks WHERE assigned_to_dept = ? AND (assigned_employee IS NULL OR assigned_employee = 0) ORDER BY created_at DESC");
-$stmt->execute([$dept_id]);
-$pending_tasks = $stmt->fetchAll();
+$alerts_stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE assigned_to = ? AND status = 'Pending Approval' ORDER BY created_at DESC");
+$alerts_stmt->execute([$user_id]);
+$pending_alerts = $alerts_stmt->fetchAll();
+
+// Verification pending tasks
+$verification_stmt = $pdo->prepare("SELECT mr.*, u.full_name as emp_name FROM maintenance_requests mr 
+                                   JOIN users u ON mr.assigned_to = u.id 
+                                   WHERE mr.dept_id = ? AND mr.status = 'In Progress' AND mr.is_verified = 0 
+                                   ORDER BY mr.updated_at DESC");
+$verification_stmt->execute([$dept_id]);
+$verification_tasks = $verification_stmt->fetchAll();
 
 // ለ. ከራሱ ሰራተኞች የመጡ የምርት ሪፖርቶች እና ፊድባኮች (Daily Reports)
 // ለ. ከራሱ ሰራተኞች የመጡ የምርት ሪፖርቶች
@@ -54,6 +62,16 @@ $my_maintenance_requests = $maint_stmt->fetchAll();
 $new_req_stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending'");
 $new_req_stmt->execute([$dept_id]);
 $new_requests = $new_req_stmt->fetchAll(); 
+
+// New Alerts: Pending Approval assigned to this Shift Leader
+$alerts_stmt = $pdo->prepare("SELECT COUNT(*) as count FROM maintenance_requests WHERE assigned_to = ? AND status = 'Pending Approval' AND is_read_by_receiver = 0");
+$alerts_stmt->execute([$user_id]);
+$new_alerts_count = $alerts_stmt->fetch()['count'];
+
+// Verification Pending: In Progress, not verified, in department
+$verification_stmt = $pdo->prepare("SELECT COUNT(*) as count FROM maintenance_requests WHERE dept_id = ? AND status = 'In Progress' AND is_verified = 0");
+$verification_stmt->execute([$dept_id]);
+$verification_pending_count = $verification_stmt->fetch()['count'];
 // ---------------------------------
 
 include '../includes/header_glass.php';
@@ -75,6 +93,18 @@ include '../includes/header_glass.php';
                 <i class="bi bi-person-badge-fill text-<?php echo $theme_color; ?> me-2"></i>
                 <?php echo htmlspecialchars($dept_name); ?> - Dashboard
             </h2>
+            <div class="mt-2">
+                <?php if ($new_alerts_count > 0): ?>
+                    <span class="badge bg-warning text-dark me-2">
+                        <i class="bi bi-exclamation-triangle"></i> New Alerts: <?php echo $new_alerts_count; ?>
+                    </span>
+                <?php endif; ?>
+                <?php if ($verification_pending_count > 0): ?>
+                    <span class="badge bg-info text-white">
+                        <i class="bi bi-check-circle"></i> Verification Pending: <?php echo $verification_pending_count; ?>
+                    </span>
+                <?php endif; ?>
+            </div>
             <p class="text-muted mb-0">መስመር፦ <strong><?php echo $full_name; ?></strong> | ሪፖርት ለ፦ <strong>Supervisor/Manager</strong></p>
         </div>
         <div class="text-end">
@@ -89,55 +119,63 @@ include '../includes/header_glass.php';
         <div class="col-lg-8">
             <div class="card glass-card border-0 shadow-sm mb-4">
                 <div class="card-header bg-transparent border-0 pt-4 pb-2">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-list-task text-primary me-2"></i>ከበላይ የመጡ ስራዎች (Pending)</h5>
+                    <h5 class="fw-bold mb-0"><i class="bi bi-list-task text-primary me-2"></i>Pending Alerts & Tasks</h5>
                 </div>
                 <div class="card-body">
+                    <!-- New Alerts -->
+                    <h6 class="text-warning"><i class="bi bi-exclamation-triangle"></i> New Alerts (Pending Approval)</h6>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Machine</th>
+                                    <th>Issue</th>
+                                    <th>Priority</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if(empty($pending_alerts)): ?>
+                                    <tr><td colspan="4" class="text-center text-muted py-2">No new alerts.</td></tr>
+                                <?php endif; ?>
+                                <?php foreach($pending_alerts as $alert): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($alert['machine_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($alert['issue_description']); ?></td>
+                                    <td><span class="badge bg-<?php echo ($alert['priority']=='Emergency') ? 'danger' : 'warning'; ?>"><?php echo $alert['priority']; ?></span></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="processAlert(<?php echo $alert['id']; ?>, 'assign')">Assign to Employee</button>
+                                        <button class="btn btn-sm btn-secondary" onclick="processAlert(<?php echo $alert['id']; ?>, 'escalate')">Escalate</button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Verification Pending -->
+                    <h6 class="text-info"><i class="bi bi-check-circle"></i> Verification Pending</h6>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th>የስራው አይነት</th>
-                                    <th>ቅድሚያ የሚሰጠው</th>
-                                    <th class="text-center">ድርጊት</th>
+                                    <th>Task ID</th>
+                                    <th>Machine</th>
+                                    <th>Assigned Employee</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if(empty($pending_tasks)): ?>
-                                    <tr><td colspan="3" class="text-center text-muted py-4">መደብ የሚጠብቅ አዲስ ስራ የለም።</td></tr>
+                                <?php if(empty($verification_tasks)): ?>
+                                    <tr><td colspan="4" class="text-center text-muted py-2">No tasks pending verification.</td></tr>
                                 <?php endif; ?>
-                                <?php foreach($pending_tasks as $task): ?>
-                                <tr id="task-row-<?php echo $task['id']; ?>">
+                                <?php foreach($verification_tasks as $task): ?>
+                                <tr>
+                                    <td>#<?php echo $task['id']; ?></td>
+                                    <td><?php echo htmlspecialchars($task['machine_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($task['emp_name']); ?></td>
                                     <td>
-                                        <div class="fw-semibold"><?php echo htmlspecialchars($task['task_title'] ?? 'General Task'); ?></div>
-                                        <small class="text-muted"><?php echo htmlspecialchars($task['description'] ?? ''); ?></small>
-                                    </td>
-                                    <td><span class="badge bg-soft-warning text-warning border border-warning">Normal</span></td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-<?php echo $theme_color; ?> rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#assignModal<?php echo $task['id']; ?>">
-                                            <i class="bi bi-person-plus"></i> ሰራተኛ መድብ
-                                        </button>
-                                        
-                                        <div class="modal fade" id="assignModal<?php echo $task['id']; ?>" tabindex="-1">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content glass-card shadow">
-                                                    <div class="modal-header border-0"><h5 class="fw-bold">ስራ መመደቢያ</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                                                    <div class="modal-body text-start">
-                                                        <form onsubmit="assignTask(event, <?php echo $task['id']; ?>)">
-                                                            <div class="mb-3">
-                                                                <label class="form-label">ሰራተኛ ይምረጡ</label>
-                                                                <select id="empSelect<?php echo $task['id']; ?>" class="form-select bg-light border-0" required>
-                                                                    <option value="">-- ምረጥ --</option>
-                                                                    <?php foreach($my_employees as $emp): ?>
-                                                                        <option value="<?php echo $emp['id']; ?>"><?php echo htmlspecialchars($emp['full_name']); ?></option>
-                                                                    <?php endforeach; ?>
-                                                                </select>
-                                                            </div>
-                                                            <button type="submit" class="btn btn-primary w-100 rounded-pill">መደብ አረጋግጥ</button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <a href="verify_task.php?id=<?php echo $task['id']; ?>" class="btn btn-sm btn-success">Verify & Close</a>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -225,65 +263,114 @@ include '../includes/header_glass.php';
     </div>
 </div>
 
+<!-- Modals for Alert Processing -->
+<div class="modal fade" id="assignAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Assign Alert to Employee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="assignAlertForm">
+                <div class="modal-body">
+                    <input type="hidden" name="req_id" id="alert_req_id">
+                    <div class="mb-3">
+                        <label>Select Employee</label>
+                        <select name="employee_id" class="form-select" required>
+                            <?php foreach($my_employees as $emp): ?>
+                                <option value="<?php echo $emp['id']; ?>"><?php echo htmlspecialchars($emp['full_name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Assign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="escalateAlertModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5>Escalate Alert</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="escalateAlertForm">
+                <div class="modal-body">
+                    <input type="hidden" name="req_id" id="escalate_req_id">
+                    <p>Are you sure you want to escalate this alert to Engineering/Manager?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-warning">Escalate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
-function showToast(message, isError = false) {
-    const toastEl = document.getElementById('liveToast');
-    const toastBody = document.getElementById('toastMessage');
-    toastBody.textContent = message;
-    toastEl.classList.remove('bg-success', 'bg-danger');
-    toastEl.classList.add(isError ? 'bg-danger' : 'bg-success');
-    new bootstrap.Toast(toastEl).show();
+function processAlert(reqId, action) {
+    if (action === 'assign') {
+        document.getElementById('alert_req_id').value = reqId;
+        var modal = new bootstrap.Modal(document.getElementById('assignAlertModal'));
+        modal.show();
+    } else if (action === 'escalate') {
+        document.getElementById('escalate_req_id').value = reqId;
+        var modal = new bootstrap.Modal(document.getElementById('escalateAlertModal'));
+        modal.show();
+    }
 }
 
-// ሰራተኛ ለመመደብ (assign_task_ajax.php)
+// AJAX for alert processing
+$('#assignAlertForm').on('submit', function(e){
+    e.preventDefault();
+    $.post('process_decision.php', $(this).serialize() + '&assign_to_employee=1', function(res){
+        alert('Alert assigned successfully!');
+        location.reload();
+    });
+});
+
+$('#escalateAlertForm').on('submit', function(e){
+    e.preventDefault();
+    $.post('process_decision.php', $(this).serialize() + '&escalate=1', function(res){
+        alert('Alert escalated successfully!');
+        location.reload();
+    });
+});
 function assignTask(event, taskId) {
     event.preventDefault();
-    const empId = document.getElementById('empSelect' + taskId).value;
     
-    fetch('assign_task_ajax.php', {
+    const empId = document.getElementById('empSelect' + taskId).value;
+    if (!empId) {
+        alert("እባክዎ ሰራተኛ ይምረጡ!");
+        return;
+    }
+
+    // ወደ ዳታቤዝ ለመላክ (AJAX)
+    fetch('assign_handler.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ task_id: taskId, employee_id: empId })
+        body: `task_id=${taskId}&employee_id=${empId}`
     })
-    .then(r => r.json())
+    .then(response => response.json())
     .then(data => {
-        if(data.success) {
-            showToast(data.message);
-            bootstrap.Modal.getInstance(document.getElementById('assignModal' + taskId)).hide();
-            document.getElementById('task-row-' + taskId).style.opacity = '0.5';
-            document.getElementById('task-row-' + taskId).querySelector('button').disabled = true;
-            document.getElementById('task-row-' + taskId).querySelector('button').innerHTML = 'ተመድቧል';
+        if (data.success) {
+            // ስራው ስለተመደበ ከዝርዝሩ ውስጥ እንዲጠፋ ማድረግ
+            document.getElementById('task-row-' + taskId).remove();
+            
+            // የቶስት መልዕክት ማሳየት
+            const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+            document.getElementById('toastMessage').innerText = "ስራው ለሰራተኛው በተሳካ ሁኔታ ተመድቧል!";
+            toast.show();
+            
+            // ሞዳሉን መዝጋት
+            const modal = bootstrap.Modal.getInstance(document.getElementById('assignModal' + taskId));
+            modal.hide();
         } else {
-            showToast(data.message, true);
-        }
-    });
-}
-
-// የጥገና ውሳኔ (process_decision_ajax.php)
-function submitDecision(reqId, action) {
-    const severity = document.getElementById('severity_' + reqId).value;
-    if(!confirm('እርግጠኛ ነዎት ይህን ውሳኔ ማስተላለፍ ይፈልጋሉ?')) return;
-
-    fetch('process_decision_ajax.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ req_id: reqId, severity: severity, action: action })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if(data.success) {
-            showToast(data.message);
-            const item = document.getElementById('alert-item-' + reqId);
-            item.style.transform = 'scale(0.8)';
-            item.style.opacity = '0';
-            setTimeout(() => { 
-                item.remove(); 
-                if(document.querySelectorAll('#alertsContainer .list-group-item').length === 0) {
-                    document.getElementById('alertsContainer').innerHTML = '<div class="text-center py-5 text-muted">አዲስ የጥገና ጥያቄ የለም</div>';
-                }
-            }, 300);
-        } else {
-            showToast(data.message, true);
+            alert("ስህተት ተከስቷል፦ " + data.message);
         }
     });
 }
