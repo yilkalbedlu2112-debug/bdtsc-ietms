@@ -22,56 +22,76 @@ elseif (strpos($dept_name, 'Garment') !== false) $theme_color = "danger";
 
 // --- የዳታ አሰባሰብ (Queries) ---
 
-// ሀ. ከማናጀር/ሱፐርቫይዘር የተላኩ አዳዲስ ስራዎች (Assigned to this Shift Leader)
-// እነዚህ ገና ለሰራተኛ ያልተመደቡ ስራዎች ናቸው
-$alerts_stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE assigned_to = ? AND status = 'Pending Approval' ORDER BY created_at DESC");
-$alerts_stmt->execute([$user_id]);
-$pending_alerts = $alerts_stmt->fetchAll();
+// Pending tasks routed to this Shift Leader department
+$pending_alerts_stmt = $pdo->prepare("SELECT mr.*, u.full_name as creator_name 
+                                   FROM maintenance_requests mr 
+                                   LEFT JOIN users u ON mr.user_id = u.id 
+                                   WHERE mr.receiver_dept_id = ? AND mr.status IN ('Pending', 'Pending Approval') 
+                                   ORDER BY mr.created_at DESC");
+$pending_alerts_stmt->execute([$dept_id]);
+$pending_alerts = $pending_alerts_stmt->fetchAll();
 
-// Verification pending tasks
-$verification_stmt = $pdo->prepare("SELECT mr.*, u.full_name as emp_name FROM maintenance_requests mr 
+// Department-level monitoring tasks
+$department_tasks_stmt = $pdo->prepare("SELECT mr.*, u.full_name as assigned_employee 
+                                      FROM maintenance_requests mr 
+                                      LEFT JOIN users u ON mr.assigned_to = u.id 
+                                      WHERE mr.receiver_dept_id = ? 
+                                      ORDER BY FIELD(mr.status, 'Blocked', 'In Progress', 'Pending Approval', 'Pending', 'Assigned', 'Completed'), mr.updated_at DESC");
+$department_tasks_stmt->execute([$dept_id]);
+$department_tasks = $department_tasks_stmt->fetchAll();
+
+// Verification pending tasks for this department
+$verification_stmt = $pdo->prepare("SELECT mr.*, u.full_name as emp_name 
+                                   FROM maintenance_requests mr 
                                    JOIN users u ON mr.assigned_to = u.id 
-                                   WHERE mr.dept_id = ? AND mr.status = 'In Progress' AND mr.is_verified = 0 
+                                   WHERE mr.receiver_dept_id = ? AND mr.status = 'In Progress' AND mr.is_verified = 0 
                                    ORDER BY mr.updated_at DESC");
 $verification_stmt->execute([$dept_id]);
 $verification_tasks = $verification_stmt->fetchAll();
 
-// ለ. ከራሱ ሰራተኞች የመጡ የምርት ሪፖርቶች እና ፊድባኮች (Daily Reports)
-// ለ. ከራሱ ሰራተኞች የመጡ የምርት ሪፖርቶች
-$report_stmt = $pdo->prepare("SELECT pr.*, u.full_name as employee_name 
-                             FROM production_reports pr 
-                             JOIN users u ON pr.user_id = u.id 
-                             WHERE pr.dept_id = ? AND pr.reported_to LIKE '%Shift Leader%'
-                             ORDER BY pr.report_date DESC LIMIT 10"); // እዚህ ጋር 'report_date' መሆኑን አረጋግጥ
-$report_stmt->execute([$dept_id]);
-$employee_reports = $report_stmt->fetchAll();
-
-// ሐ. ለስራ ምደባ ዝግጁ የሆኑ ሰራተኞች (የዚህ ሽፍት ሰራተኞች ብቻ)
-$emp_stmt = $pdo->prepare("SELECT id, full_name, user_role FROM users WHERE dept_id = ? AND user_role = 'Employee'");
+// Employee list with active task counts
+$emp_stmt = $pdo->prepare("SELECT u.id, u.full_name, COUNT(mr.id) as active_task_count 
+                          FROM users u 
+                          LEFT JOIN maintenance_requests mr ON mr.assigned_to = u.id AND mr.status != 'Completed' 
+                          WHERE u.dept_id = ? AND u.user_role = 'Employee' 
+                          GROUP BY u.id, u.full_name");
 $emp_stmt->execute([$dept_id]);
 $my_employees = $emp_stmt->fetchAll();
 
-// መ. ወደ ኢንጂነሪንግ የተላኩ የጥገና ጥያቄዎች ሁኔታ (Maintenance Tracking)
-// 'requested_by' የሚለውን በ 'user_id' (ወይም በዳታቤዝህ ውስጥ ባለው ስም) ተካው
-$maint_stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE user_id = ? ORDER BY id DESC LIMIT 5");
-$maint_stmt->execute([$user_id]);
-$my_maintenance_requests = $maint_stmt->fetchAll();
+// Active tasks currently assigned to department employees
+$employee_tasks_stmt = $pdo->prepare("SELECT mr.*, u.full_name as assigned_employee 
+                                     FROM maintenance_requests mr 
+                                     JOIN users u ON mr.assigned_to = u.id 
+                                     WHERE mr.receiver_dept_id = ? 
+                                       AND mr.assigned_to IS NOT NULL 
+                                       AND mr.status != 'Completed' 
+                                     ORDER BY u.full_name, FIELD(mr.status,'Pending Approval','Pending','Assigned','In Progress','Blocked'), mr.updated_at DESC");
+$employee_tasks_stmt->execute([$dept_id]);
+$employee_tasks = $employee_tasks_stmt->fetchAll();
 
-// --- ይህ መስመር ነው የጎደለው ---
-// ከሰራተኞች የመጡ እና ውሳኔ የሚጠብቁ የጥገና ጥያቄዎችን (Pending Maintenance) ለማግኘት
-$new_req_stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending'");
+// Recent department reports
+$report_stmt = $pdo->prepare("SELECT pr.*, u.full_name as employee_name 
+                             FROM production_reports pr 
+                             JOIN users u ON pr.user_id = u.id 
+                             WHERE pr.dept_id = ? AND pr.reported_to LIKE '%Shift Leader%' 
+                             ORDER BY pr.report_date DESC LIMIT 10");
+$report_stmt->execute([$dept_id]);
+$employee_reports = $report_stmt->fetchAll();
+
+// New pending maintenance requests routed to this department
+$new_req_stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE receiver_dept_id = ? AND status = 'Pending' ORDER BY created_at DESC");
 $new_req_stmt->execute([$dept_id]);
-$new_requests = $new_req_stmt->fetchAll(); 
+$new_requests = $new_req_stmt->fetchAll();
 
-// New Alerts: Pending Approval assigned to this Shift Leader
-$alerts_stmt = $pdo->prepare("SELECT COUNT(*) as count FROM maintenance_requests WHERE assigned_to = ? AND status = 'Pending Approval' AND is_read_by_receiver = 0");
-$alerts_stmt->execute([$user_id]);
-$new_alerts_count = $alerts_stmt->fetch()['count'];
+// New Alerts: Pending Approval routed to this Shift Leader department
+$alerts_count_stmt = $pdo->prepare("SELECT COUNT(*) as count FROM maintenance_requests WHERE receiver_dept_id = ? AND status = 'Pending Approval' AND is_read_by_receiver = 0");
+$alerts_count_stmt->execute([$dept_id]);
+$new_alerts_count = $alerts_count_stmt->fetch()['count'];
 
 // Verification Pending: In Progress, not verified, in department
-$verification_stmt = $pdo->prepare("SELECT COUNT(*) as count FROM maintenance_requests WHERE dept_id = ? AND status = 'In Progress' AND is_verified = 0");
-$verification_stmt->execute([$dept_id]);
-$verification_pending_count = $verification_stmt->fetch()['count'];
+$verification_pending_stmt = $pdo->prepare("SELECT COUNT(*) as count FROM maintenance_requests WHERE receiver_dept_id = ? AND status = 'In Progress' AND is_verified = 0");
+$verification_pending_stmt->execute([$dept_id]);
+$verification_pending_count = $verification_pending_stmt->fetch()['count'];
 // ---------------------------------
 
 include '../includes/header_glass.php';
@@ -118,12 +138,13 @@ include '../includes/header_glass.php';
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card glass-card border-0 shadow-sm mb-4">
-                <div class="card-header bg-transparent border-0 pt-4 pb-2">
-                    <h5 class="fw-bold mb-0"><i class="bi bi-list-task text-primary me-2"></i>Pending Alerts & Tasks</h5>
+                <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-list-check text-primary me-2"></i>Assign Tasks</h5>
+                        <small class="text-muted">Assign pending tasks to employees in your department.</small>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <!-- New Alerts -->
-                    <h6 class="text-warning"><i class="bi bi-exclamation-triangle"></i> New Alerts (Pending Approval)</h6>
                     <div class="table-responsive mb-4">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
@@ -131,52 +152,149 @@ include '../includes/header_glass.php';
                                     <th>Machine</th>
                                     <th>Issue</th>
                                     <th>Priority</th>
-                                    <th>Action</th>
+                                    <th>Assign To</th>
+                                    <th class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if(empty($pending_alerts)): ?>
-                                    <tr><td colspan="4" class="text-center text-muted py-2">No new alerts.</td></tr>
+                                    <tr><td colspan="5" class="text-center text-muted py-3">No assignable tasks available.</td></tr>
                                 <?php endif; ?>
                                 <?php foreach($pending_alerts as $alert): ?>
-                                <tr>
+                                <tr id="assign-row-<?php echo $alert['id']; ?>">
                                     <td><?php echo htmlspecialchars($alert['machine_name']); ?></td>
                                     <td><?php echo htmlspecialchars($alert['issue_description']); ?></td>
-                                    <td><span class="badge bg-<?php echo ($alert['priority']=='Emergency') ? 'danger' : 'warning'; ?>"><?php echo $alert['priority']; ?></span></td>
+                                    <td><span class="badge bg-<?php echo ($alert['priority']=='Emergency') ? 'danger' : 'warning'; ?>"><?php echo htmlspecialchars($alert['priority']); ?></span></td>
                                     <td>
-                                        <button class="btn btn-sm btn-primary" onclick="processAlert(<?php echo $alert['id']; ?>, 'assign')">Assign to Employee</button>
-                                        <button class="btn btn-sm btn-secondary" onclick="processAlert(<?php echo $alert['id']; ?>, 'escalate')">Escalate</button>
+                                        <select id="assignEmployeeSelect_<?php echo $alert['id']; ?>" class="form-select form-select-sm" onchange="updateRowAssigneeWarning(<?php echo $alert['id']; ?>)">
+                                            <option value="">Select employee</option>
+                                            <?php foreach($my_employees as $emp): ?>
+                                                <option value="<?php echo $emp['id']; ?>" data-active-count="<?php echo $emp['active_task_count']; ?>">
+                                                    <?php echo htmlspecialchars($emp['full_name']); ?> (<?php echo $emp['active_task_count']; ?> active)
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div id="assignWarning_<?php echo $alert['id']; ?>" class="form-text text-danger d-none">Warning: selected employee already has more than 3 active tasks.</div>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-primary me-2" onclick="assignTask(<?php echo $alert['id']; ?>)">Assign</button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="processAlert(<?php echo $alert['id']; ?>, 'escalate')">Escalate</button>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Verification Pending -->
-                    <h6 class="text-info"><i class="bi bi-check-circle"></i> Verification Pending</h6>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+            <div class="card glass-card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-bar-chart-line text-primary me-2"></i>Department Task Monitor</h5>
+                        <small class="text-muted">Only tasks where receiver_dept_id matches your department.</small>
+                    </div>
+                    <div class="btn-group" role="group" aria-label="Task filters">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="filterTasks('blocked')">Blocked Tasks</button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="filterTasks('pending_verification')">Pending Verification</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="filterTasks('all')">All Tasks</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle" id="departmentTaskTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Task ID</th>
-                                    <th>Machine</th>
-                                    <th>Assigned Employee</th>
-                                    <th>Action</th>
+                                    <th>Task</th>
+                                    <th>Assigned</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php if(empty($verification_tasks)): ?>
-                                    <tr><td colspan="4" class="text-center text-muted py-2">No tasks pending verification.</td></tr>
+                                <?php if(empty($department_tasks)): ?>
+                                    <tr><td colspan="5" class="text-center text-muted py-3">No department tasks found.</td></tr>
                                 <?php endif; ?>
-                                <?php foreach($verification_tasks as $task): ?>
-                                <tr>
-                                    <td>#<?php echo $task['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($task['machine_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($task['emp_name']); ?></td>
+                                <?php foreach($department_tasks as $task): 
+                                    $displayStatus = $task['status'];
+                                    $statusClass = 'secondary';
+                                    $filterTag = 'all';
+
+                                    if ($task['status'] === 'Blocked') {
+                                        $displayStatus = 'Blocked';
+                                        $statusClass = 'danger';
+                                        $filterTag = 'blocked';
+                                    } elseif ($task['status'] === 'In Progress' && $task['is_verified'] == 0) {
+                                        $displayStatus = 'Under Review';
+                                        $statusClass = 'warning';
+                                        $filterTag = 'pending_verification';
+                                    } elseif ($task['status'] === 'In Progress') {
+                                        $displayStatus = 'In Progress';
+                                        $statusClass = 'primary';
+                                    } elseif ($task['status'] === 'Pending Approval') {
+                                        $displayStatus = 'Pending Approval';
+                                        $statusClass = 'info';
+                                    } elseif ($task['status'] === 'Pending') {
+                                        $displayStatus = 'Pending';
+                                        $statusClass = 'secondary';
+                                    } elseif ($task['status'] === 'Assigned') {
+                                        $displayStatus = 'Assigned';
+                                        $statusClass = 'dark';
+                                    } elseif ($task['status'] === 'Completed') {
+                                        $displayStatus = 'Completed';
+                                        $statusClass = 'success';
+                                    }
+                                ?>
+                                <tr id="task-row-<?php echo $task['id']; ?>" data-filter="<?php echo $filterTag; ?>" data-status="<?php echo htmlspecialchars($task['status']); ?>" data-verified="<?php echo htmlspecialchars($task['is_verified']); ?>">
                                     <td>
-                                        <a href="verify_task.php?id=<?php echo $task['id']; ?>" class="btn btn-sm btn-success">Verify & Close</a>
+                                        <div class="fw-semibold">#<?php echo $task['id']; ?> - <?php echo htmlspecialchars($task['machine_name'] ?: $task['title'] ?: 'No subject'); ?></div>
+                                        <div class="small text-muted"><?php echo htmlspecialchars(substr($task['issue_description'] ?? $task['description'], 0, 80)); ?></div>
                                     </td>
+                                    <td><?php echo htmlspecialchars($task['assigned_employee'] ?: 'Unassigned'); ?></td>
+                                    <td><span class="badge bg-<?php echo $statusClass; ?> text-white"><?php echo $displayStatus; ?></span></td>
+                                    <td><span class="badge bg-light text-dark"><?php echo htmlspecialchars($task['priority']); ?></span></td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="showTaskDetails(<?php echo $task['id']; ?>)">Details</button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card glass-card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-person-lines-fill text-success me-2"></i>Assigned Tasks per Employee</h5>
+                        <small class="text-muted">Show tasks currently assigned to the department’s employees.</small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Task</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if(empty($employee_tasks)): ?>
+                                    <tr><td colspan="5" class="text-center text-muted py-3">No active assigned tasks found.</td></tr>
+                                <?php endif; ?>
+                                <?php foreach($employee_tasks as $task): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($task['assigned_employee']); ?></td>
+                                    <td><?php echo htmlspecialchars($task['machine_name'] ?: $task['title']); ?></td>
+                                    <td><span class="badge bg-<?php echo ($task['status'] === 'In Progress' ? 'primary' : ($task['status'] === 'Blocked' ? 'danger' : 'secondary')); ?> text-white"><?php echo htmlspecialchars($task['status']); ?></span></td>
+                                    <td><?php echo htmlspecialchars($task['priority']); ?></td>
+                                    <td><?php echo date('M d', strtotime($task['updated_at'])); ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -264,33 +382,6 @@ include '../includes/header_glass.php';
 </div>
 
 <!-- Modals for Alert Processing -->
-<div class="modal fade" id="assignAlertModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5>Assign Alert to Employee</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="assignAlertForm">
-                <div class="modal-body">
-                    <input type="hidden" name="req_id" id="alert_req_id">
-                    <div class="mb-3">
-                        <label>Select Employee</label>
-                        <select name="employee_id" class="form-select" required>
-                            <?php foreach($my_employees as $emp): ?>
-                                <option value="<?php echo $emp['id']; ?>"><?php echo htmlspecialchars($emp['full_name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Assign</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <div class="modal fade" id="escalateAlertModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -313,26 +404,116 @@ include '../includes/header_glass.php';
 
 <script>
 function processAlert(reqId, action) {
-    if (action === 'assign') {
-        document.getElementById('alert_req_id').value = reqId;
-        var modal = new bootstrap.Modal(document.getElementById('assignAlertModal'));
-        modal.show();
-    } else if (action === 'escalate') {
+    if (action === 'escalate') {
         document.getElementById('escalate_req_id').value = reqId;
         var modal = new bootstrap.Modal(document.getElementById('escalateAlertModal'));
         modal.show();
     }
 }
 
-// AJAX for alert processing
-$('#assignAlertForm').on('submit', function(e){
-    e.preventDefault();
-    $.post('process_decision.php', $(this).serialize() + '&assign_to_employee=1', function(res){
-        alert('Alert assigned successfully!');
-        location.reload();
-    });
-});
+function updateRowAssigneeWarning(taskId) {
+    const select = document.getElementById('assignEmployeeSelect_' + taskId);
+    const warning = document.getElementById('assignWarning_' + taskId);
+    if (!select || !warning) return;
+    const activeCount = parseInt(select.selectedOptions[0].dataset.activeCount || '0', 10);
+    warning.classList.toggle('d-none', activeCount <= 3);
+}
 
+function assignTask(taskId) {
+    const select = document.getElementById('assignEmployeeSelect_' + taskId);
+    if (!select) return;
+    const employeeId = select.value;
+    if (!employeeId) {
+        alert('Please select an employee to assign.');
+        return;
+    }
+
+    const activeCount = parseInt(select.selectedOptions[0].dataset.activeCount || '0', 10);
+    const warning = document.getElementById('assignWarning_' + taskId);
+    if (activeCount > 3) {
+        warning.classList.remove('d-none');
+        if (!confirm('Selected employee already has more than 3 active tasks. Continue?')) {
+            return;
+        }
+    }
+
+    fetch('assign_task_ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `task_id=${taskId}&employee_id=${employeeId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('assign-row-' + taskId)?.remove();
+            const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+            document.getElementById('toastMessage').innerText = data.message || 'Assigned successfully.';
+            toast.show();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(() => alert('Unable to assign task.'));
+}
+
+function filterTasks(filter) {
+    const rows = document.querySelectorAll('#departmentTaskTable tbody tr');
+    rows.forEach(row => {
+        const rowFilter = row.dataset.filter || 'all';
+        row.style.display = (filter === 'all' || rowFilter === filter) ? '' : 'none';
+    });
+}
+
+function showTaskDetails(taskId) {
+    window.location.href = 'verify_task.php?id=' + taskId;
+}
+
+function updateRowAssigneeWarning(taskId) {
+    const select = document.getElementById('assignEmployeeSelect_' + taskId);
+    const warning = document.getElementById('assignWarning_' + taskId);
+    if (!select || !warning) return;
+    const activeCount = parseInt(select.selectedOptions[0].dataset.activeCount || '0', 10);
+    warning.classList.toggle('d-none', activeCount <= 3);
+}
+
+function assignTask(taskId) {
+    const select = document.getElementById('assignEmployeeSelect_' + taskId);
+    if (!select) return;
+    const employeeId = select.value;
+    if (!employeeId) {
+        alert('Please select an employee to assign.');
+        return;
+    }
+
+    const activeCount = parseInt(select.selectedOptions[0].dataset.activeCount || '0', 10);
+    const warning = document.getElementById('assignWarning_' + taskId);
+    if (activeCount > 3) {
+        warning.classList.remove('d-none');
+        if (!confirm('Selected employee already has more than 3 active tasks. Continue?')) {
+            return;
+        }
+    }
+
+    fetch('assign_task_ajax.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `task_id=${taskId}&employee_id=${employeeId}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('assign-row-' + taskId)?.remove();
+            const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+            document.getElementById('toastMessage').innerText = data.message || 'Assigned successfully.';
+            toast.show();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(() => alert('Unable to assign task.'));
+}
+
+// AJAX for alert processing
 $('#escalateAlertForm').on('submit', function(e){
     e.preventDefault();
     $.post('process_decision.php', $(this).serialize() + '&escalate=1', function(res){
@@ -340,40 +521,6 @@ $('#escalateAlertForm').on('submit', function(e){
         location.reload();
     });
 });
-function assignTask(event, taskId) {
-    event.preventDefault();
-    
-    const empId = document.getElementById('empSelect' + taskId).value;
-    if (!empId) {
-        alert("እባክዎ ሰራተኛ ይምረጡ!");
-        return;
-    }
-
-    // ወደ ዳታቤዝ ለመላክ (AJAX)
-    fetch('assign_handler.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `task_id=${taskId}&employee_id=${empId}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // ስራው ስለተመደበ ከዝርዝሩ ውስጥ እንዲጠፋ ማድረግ
-            document.getElementById('task-row-' + taskId).remove();
-            
-            // የቶስት መልዕክት ማሳየት
-            const toast = new bootstrap.Toast(document.getElementById('liveToast'));
-            document.getElementById('toastMessage').innerText = "ስራው ለሰራተኛው በተሳካ ሁኔታ ተመድቧል!";
-            toast.show();
-            
-            // ሞዳሉን መዝጋት
-            const modal = bootstrap.Modal.getInstance(document.getElementById('assignModal' + taskId));
-            modal.hide();
-        } else {
-            alert("ስህተት ተከስቷል፦ " + data.message);
-        }
-    });
-}
 </script>
 
 <?php include '../includes/footer_glass.php'; ?>

@@ -23,10 +23,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $current_task = $stmt->fetch();
 
             if ($current_task) {
-                // BR-04 & BR-05: Workflow Validation
-                // ስራው አስቀድሞ Completed ከሆነ መቀየር አይቻልም
-                if ($current_task['status'] === 'Completed') {
-                    echo json_encode(['success' => false, 'message' => 'ይህ ስራ ቀድሞውኑ ተጠናቋል። መለወጥ አይቻልም።']);
+                // BR-04 & BR-05: Workflow Validation - Status Transition Rules
+                $allowed_transitions = [
+                    'Pending' => ['In Progress'],
+                    'In Progress' => ['Blocked', 'Under Review'], // Under Review when completing
+                    'Blocked' => ['In Progress'],
+                    'Under Review' => [], // Cannot change once under review
+                    'Completed' => [] // Cannot change once completed
+                ];
+
+                if (!in_array($status, $allowed_transitions[$current_task['status']] ?? [])) {
+                    echo json_encode(['success' => false, 'message' => 'Invalid status transition from ' . $current_task['status'] . ' to ' . $status]);
                     exit();
                 }
 
@@ -34,21 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sql = "UPDATE maintenance_requests SET status = ? ";
                 $params = [$status, $task_id];
 
-                // UC-11: ስራው ሲጠናቀቅ ሰዓት መመዝገብ
-                if ($status === 'Completed') {
-                    // Instead of completing, set to In Progress for verification
-                    $sql = "UPDATE maintenance_requests SET status = 'In Progress', is_verified = 0 ";
+                // UC-11: When marking as Completed, set to Under Review for verification
+                if ($status === 'Under Review') {
+                    $sql = "UPDATE maintenance_requests SET status = 'Under Review', is_verified = 0 ";
                     $params = [$task_id];
                     
                     // Notify Shift Leader
-                    // Find Shift Leader for the department
                     $stmtSL = $pdo->prepare("SELECT id FROM users WHERE dept_id = ? AND user_role = 'Shift Leader' LIMIT 1");
-                    $stmtSL->execute([$current_task['dept_id']]);
+                    $stmtSL->execute([$current_task['dept_id'] ?? $_SESSION['dept_id']]);
                     $shift_leader = $stmtSL->fetch();
                     
                     if ($shift_leader) {
                         $notif = $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'verification_pending')");
-                        $notif->execute([$shift_leader['id'], "Task #$task_id is ready for verification."]);
+                        $notif->execute([$shift_leader['id'], "Task #$task_id submitted for verification by employee."]);
                     }
                 }
                 

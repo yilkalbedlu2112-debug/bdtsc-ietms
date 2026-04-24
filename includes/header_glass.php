@@ -217,13 +217,9 @@ $image_path = $base_url . "/assets/images/" . $profile_pic;
             <?php elseif ($user_role === 'Supervisor'): ?>
                 <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">  <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?> </a>
                 <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"> <i class="bi bi-plus-circle-dotted"></i> Create New Task </a>
-                <a href="<?php echo $base_url; ?>/supervisor/alert_shift_leader.php" class="<?php echo $current_page == 'alert_shift_leader.php' ? 'active' : ''; ?> text-warning">  <i class="bi bi-megaphone"></i> Alert Shift Leader</a>
-                
             <?php else: ?>
                 <a href="<?php echo $base_url; ?>/employee/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
                 <a href="<?php echo $base_url; ?>/employee/report_production.php" class="<?php echo $current_page == 'report_production.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('Report Production'); ?></a>
-            <a href="<?php echo $base_url; ?>/employee/submit_feedback.php" class="<?php echo $current_page == 'submit_feedback.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('Submit Feedback'); ?></a>
-            
             <?php endif; ?>
                 
             <hr class="border-secondary mx-3">

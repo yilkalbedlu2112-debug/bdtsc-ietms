@@ -38,8 +38,28 @@ $translations = [
         'status_in_progress' => 'In Progress',
         'status_blocked' => 'Blocked',
         'status_completed' => 'Completed',
+        'status_under_review' => 'Under Review',
         'assign_task' => 'Assign Task',
-        'force_reset_password' => 'Force Reset Password'
+        'force_reset_password' => 'Force Reset Password',
+        'my_tasks' => 'My Tasks',
+        'view_details' => 'View Details',
+        'update_status' => 'Update Status',
+        'mark_completed' => 'Mark as Completed',
+        'resume' => 'Resume',
+        'submit_feedback' => 'Submit Feedback',
+        'category' => 'Category',
+        'description' => 'Description',
+        'task_details' => 'Task Details',
+        'priority' => 'Priority',
+        'status' => 'Status',
+        'created' => 'Created',
+        'deadline' => 'Deadline',
+        'machine_workstation' => 'Machine/Workstation',
+        'no_deadline' => 'No deadline',
+        'no_tasks' => 'No tasks assigned to you at the moment.',
+        'technical' => 'Technical',
+        'material' => 'Material',
+        'administrative' => 'Administrative'
     ],
     'am' => [
         'dashboard' => 'ዳሽቦርድ',
@@ -62,13 +82,34 @@ $translations = [
         'status_in_progress' => 'በሂደት ላይ',
         'status_blocked' => 'ታግዷል',
         'status_completed' => 'ተጠናቋል',
+        'status_under_review' => 'በምርመራ ላይ',
         'assign_task' => 'ስራ ስጥ',
-        'force_reset_password' => 'የይለፍ ቃል አስተካክል'
+        'force_reset_password' => 'የይለፍ ቃል አስተካክል',
+        'my_tasks' => 'የተመደቡልኝ ስራዎች',
+        'view_details' => 'ዝርዝሮችን ይመልከቱ',
+        'update_status' => 'ሁኔታውን ቀይር',
+        'mark_completed' => 'እንደ ተጠናቀ ምልክት ያድርጉ',
+        'resume' => 'እንደገና ጀምር',
+        'submit_feedback' => 'አስተያየት ያስገቡ',
+        'category' => 'አይነት',
+        'description' => 'መግለጫ',
+        'task_details' => 'የስራ ዝርዝሮች',
+        'priority' => 'ቅድሚያ',
+        'status' => 'ሁኔታ',
+        'created' => 'የተፈጠረበት ቀን',
+        'deadline' => 'የማብቂያ ቀን',
+        'machine_workstation' => 'ሜሽን/ስራ ቦታ',
+        'no_deadline' => 'የማብቂያ ቀን የለም',
+        'no_tasks' => 'ለዛሬ የተመደበ ስራ የለም።',
+        'technical' => 'የቴክኒክ',
+        'material' => 'የጥሬ እቃ',
+        'administrative' => 'አስተዳደራዊ'
     ]
 ];
 
 function __($key) {
     global $translations, $current_lang;
     return $translations[$current_lang][$key] ?? $key;
+
 }
 ?>

@@ -26,8 +26,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $pdo->beginTransaction();
 
+        // Validate that the selected employee belongs to the current department
+        $emp_stmt = $pdo->prepare("SELECT dept_id FROM users WHERE id = ? AND user_role = 'Employee'");
+        $emp_stmt->execute([$employee_id]);
+        $employee = $emp_stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$employee || $employee['dept_id'] != $dept_id) {
+            throw new Exception('Selected employee is not part of your department.');
+        }
+
         // ሀ. የታስኩን ሁኔታ ማዘመን (BR-04) - ዲፓርትመንቱ መመሳሰሉን በድጋሚ እናረጋግጣለን
-        $stmt = $pdo->prepare("UPDATE maintenance_requests SET assigned_to = ?, status = 'Assigned', assigned_at = NOW() WHERE id = ? AND dept_id = ?");
+        $stmt = $pdo->prepare("UPDATE maintenance_requests SET assigned_to = ?, status = 'Assigned', is_read_by_receiver = 0, assigned_at = NOW(), updated_at = NOW() WHERE id = ? AND receiver_dept_id = ?");
         $stmt->execute([$employee_id, $task_id, $dept_id]);
 
         if ($stmt->rowCount() === 0) {

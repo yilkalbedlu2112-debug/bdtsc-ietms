@@ -35,23 +35,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // 4. UC-16: Audit Log መመዝገብ
             if (function_exists('log_action')) {
-                log_action($pdo, $user_id, "Feedback Submitted", "Submitted $category blocker: " . substr($description, 0, 50));
+                log_action($pdo, $user_id, "Feedback Submitted", "Submitted $category feedback: " . substr($description, 0, 50));
             }
 
-            // 5. BR-09: ለShift Leader እና ማናጀር ኖቲፊኬሽን መላክ (Notification System ካለህ)
-            // እዚህ ጋር በ 'notifications' table ውስጥ ሪከርድ ማስገባት ትችላለህ
-            $notif_sql = "INSERT INTO notifications (user_id, role_target, message, link, created_at) 
-                          SELECT id, user_role, 'አዲስ የብልሽት ሪፖርት ከ $dept_id ቀርቧል', 'view_feedback.php?id=$feedback_id', NOW() 
-                          FROM users WHERE dept_id = ? AND user_role IN ('Shift Leader', 'Manager')";
+            // 5. BR-09: ለShift Leader እና ማናጀር ኖቲፊኬሽን መላክ
+            $notif_sql = "INSERT INTO notifications (user_id, message, type, created_at) 
+                          SELECT id, ?, 'feedback_submitted', NOW() 
+                          FROM users WHERE dept_id = ? AND user_role IN ('Shift Leader', 'Department Manager')";
             $notif_stmt = $pdo->prepare($notif_sql);
-            $notif_stmt->execute([$dept_id]);
+            $message = $task_id ? "New feedback submitted for Task #$task_id" : "New feedback submitted by employee";
+            $notif_stmt->execute([$message, $dept_id]);
 
             echo json_encode([
-                'success' => true, 
-                'message' => 'ሪፖርቱ በተሳካ ሁኔታ ተልኳል! ማናጀርዎ እንዲያውቀው ተደርጓል።'
+                'success' => true,
+                'message' => 'Feedback submitted successfully! Shift Leader and Department Manager have been notified.'
             ]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'ሪፖርቱን መላክ አልተቻለም።']);
+            echo json_encode(['success' => false, 'message' => 'Failed to submit feedback.']);
         }
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database Error: ' . $e->getMessage()]);
