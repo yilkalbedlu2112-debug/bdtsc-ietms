@@ -8,18 +8,41 @@
 <script>
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
     sidebar.classList.toggle('show');
+    overlay.classList.toggle('show');
+
+    // Prevent body scroll when sidebar is open on mobile
+    if (window.innerWidth <= 991.98) {
+        document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : 'auto';
+    }
 }
 
 // Close sidebar when clicking outside on mobile
 document.addEventListener('click', function(event) {
     const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
     const toggleBtn = document.querySelector('.mobile-menu-toggle');
 
-    if (window.innerWidth <= 768) {
-        if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+    if (window.innerWidth <= 991.98) {
+        if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target) && overlay.contains(event.target)) {
             sidebar.classList.remove('show');
+            overlay.classList.remove('show');
+            document.body.style.overflow = 'auto';
         }
+    }
+});
+
+// Close sidebar on window resize if desktop
+window.addEventListener('resize', function() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (window.innerWidth > 991.98) {
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+        document.body.style.overflow = 'auto';
     }
 });
 </script>

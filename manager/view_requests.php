@@ -103,237 +103,287 @@ $counts = $cnt_stmt->fetch();
 include '../includes/header_glass.php';
 ?>
 
-<div class="container-fluid py-4">
-
+<div class="container-fluid">
     <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-        <div>
-            <h3 class="fw-bold text-dark mb-1">
-                <i class="bi bi-inbox-fill text-primary me-2"></i>
-                Cross-Departmental Requests
-            </h3>
-            <p class="text-muted mb-0">
-                <i class="bi bi-building me-1"></i>
-                <strong><?php echo htmlspecialchars($dept_name); ?></strong> Department
-            </p>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-bold mb-2">
+                        <i class="bi bi-inbox-fill text-primary me-2"></i>
+                        Cross-Departmental Requests
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-building me-1"></i>
+                        <strong><?php echo htmlspecialchars($dept_name); ?></strong> Department
+                    </p>
+                </div>
+                <a href="dashboard.php" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
         </div>
-        <a href="dashboard.php" class="btn btn-outline-secondary rounded-pill px-4">
-            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
-        </a>
     </div>
 
     <!-- KPI Summary Cards -->
     <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-primary border-4">
-                <div class="h4 fw-bold text-primary mb-0"><?php echo (int)$counts['total']; ?></div>
-                <div class="small text-muted fw-semibold">Total Received</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-primary mb-1"><?php echo (int)$counts['total']; ?></div>
+                    <div class="small text-muted fw-semibold">Total Received</div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-warning border-4">
-                <div class="h4 fw-bold text-warning mb-0"><?php echo (int)$counts['pending']; ?></div>
-                <div class="small text-muted fw-semibold">Pending</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-warning mb-1"><?php echo (int)$counts['pending']; ?></div>
+                    <div class="small text-muted fw-semibold">Pending</div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-info border-4">
-                <div class="h4 fw-bold text-info mb-0"><?php echo (int)$counts['in_progress']; ?></div>
-                <div class="small text-muted fw-semibold">In Progress</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-info mb-1"><?php echo (int)$counts['in_progress']; ?></div>
+                    <div class="small text-muted fw-semibold">In Progress</div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-success border-4">
-                <div class="h4 fw-bold text-success mb-0"><?php echo (int)$counts['completed']; ?></div>
-                <div class="small text-muted fw-semibold">Completed</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-success mb-1"><?php echo (int)$counts['completed']; ?></div>
+                    <div class="small text-muted fw-semibold">Completed</div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="card glass-card border-0 shadow-sm mb-4">
-        <div class="card-body py-3 px-4">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold mb-1">DIRECTION</label>
-                    <select name="direction" class="form-select form-select-sm bg-light border-0">
-                        <option value="incoming" <?php if ($filter_dir === 'incoming') echo 'selected'; ?>>Incoming (Received)</option>
-                        <option value="outgoing" <?php if ($filter_dir === 'outgoing') echo 'selected'; ?>>Outgoing (Sent)</option>
-                    </select>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-4 pb-2">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-funnel text-secondary me-2"></i>Filter Requests
+                    </h5>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold mb-1">REQUEST TYPE</label>
-                    <select name="request_type" class="form-select form-select-sm bg-light border-0">
-                        <option value="">All Types</option>
-                        <?php foreach (['Repair','Manpower','Resource','Legal','Maintenance','Administrative','Other'] as $rt): ?>
-                        <option value="<?php echo $rt; ?>" <?php if ($filter_type === $rt) echo 'selected'; ?>>
-                            <?php echo $rt; ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-arrow-left-right text-info me-1"></i>Direction
+                            </label>
+                            <select name="direction" class="form-select">
+                                <option value="incoming" <?php echo $filter_dir === 'incoming' ? 'selected' : ''; ?>>Incoming (Received)</option>
+                                <option value="outgoing" <?php echo $filter_dir === 'outgoing' ? 'selected' : ''; ?>>Outgoing (Sent)</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-tag text-success me-1"></i>Request Type
+                            </label>
+                            <select name="request_type" class="form-select">
+                                <option value="">All Types</option>
+                                <?php foreach (['Repair','Manpower','Resource','Legal','Maintenance','Administrative','Other'] as $rt): ?>
+                                    <option value="<?php echo $rt; ?>" <?php echo $filter_type === $rt ? 'selected' : ''; ?>>
+                                        <?php echo $rt; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-flag text-warning me-1"></i>Status
+                            </label>
+                            <select name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                <?php foreach (['Pending','In Progress','Completed','Rejected'] as $s): ?>
+                                    <option value="<?php echo $s; ?>" <?php echo $filter_status === $s ? 'selected' : ''; ?>>
+                                        <?php echo $s; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary flex-fill">
+                                    <i class="bi bi-search me-1"></i>Filter
+                                </button>
+                                <a href="view_requests.php" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-1"></i>Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold mb-1">STATUS</label>
-                    <select name="status" class="form-select form-select-sm bg-light border-0">
-                        <option value="">All Statuses</option>
-                        <?php foreach (['Pending','In Progress','Completed','Rejected'] as $s): ?>
-                        <option value="<?php echo $s; ?>" <?php if ($filter_status === $s) echo 'selected'; ?>>
-                            <?php echo $s; ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 w-50">
-                        <i class="bi bi-funnel me-1"></i> Filter
-                    </button>
-                    <a href="view_requests.php" class="btn btn-outline-secondary btn-sm rounded-pill px-3 w-50">
-                        <i class="bi bi-x-circle me-1"></i> Reset
-                    </a>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
     <!-- Requests Table -->
-    <div class="card glass-card border-0 shadow-sm">
-        <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0">
-                    <i class="bi bi-table me-2 text-primary"></i>
-                    <?php echo $filter_dir === 'outgoing' ? 'Outgoing Requests' : 'Incoming Requests'; ?>
-                    <span class="badge bg-primary-subtle text-primary ms-2 px-2 py-1 rounded-pill">
-                        <?php echo count($requests); ?> records
-                    </span>
-                </h6>
-            </div>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr class="text-uppercase text-muted" style="font-size: 0.72rem; letter-spacing: .5px;">
-                            <th class="ps-4">Requested By</th>
-                            <th><?php echo $filter_dir === 'outgoing' ? 'To (Receiver)' : 'From (Sender)'; ?></th>
-                            <th>Request Type</th>
-                            <th>Subject / Asset</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <?php if ($filter_dir === 'incoming'): ?>
-                            <th class="pe-4">Action</th>
-                            <?php endif; ?>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($requests)): ?>
-                        <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                                No <?php echo $filter_dir; ?> requests found.
-                            </td>
-                        </tr>
-                        <?php endif; ?>
-
-                        <?php foreach ($requests as $r): ?>
-                        <?php
-                            $p_class = match($r['priority']) {
-                                'Emergency', 'Urgent' => 'bg-danger',
-                                'High'                => 'bg-warning text-dark',
-                                default               => 'bg-info text-dark'
-                            };
-                            $s_class = match($r['status']) {
-                                'Completed'   => 'bg-success',
-                                'In Progress' => 'bg-primary',
-                                'Rejected'    => 'bg-danger',
-                                default       => 'bg-secondary'
-                            };
-                            $rt_icons = [
-                                'Repair'         => '🔧',
-                                'Manpower'       => '👥',
-                                'Resource'       => '📦',
-                                'Legal'          => '⚖️',
-                                'Maintenance'    => '🛠️',
-                                'Administrative' => '📋',
-                                'Other'          => '📌',
-                            ];
-                            $rt_icon = $rt_icons[$r['request_type']] ?? '📌';
-                        ?>
-                        <tr>
-                            <td class="ps-4">
-                                <div class="fw-semibold text-dark"><?php echo htmlspecialchars($r['requester_name'] ?? 'Unknown'); ?></div>
-                            </td>
-                            <td>
-                                <span class="badge bg-light text-dark border fw-normal">
-                                    <?php echo htmlspecialchars(
-                                        $filter_dir === 'outgoing'
-                                        ? ($r['receiver_dept_name'] ?? '—')
-                                        : ($r['sender_dept_name']   ?? '—')
-                                    ); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge rounded-pill bg-light text-dark border px-3 py-2" style="font-size:0.8rem;">
-                                    <?php echo $rt_icon . ' ' . htmlspecialchars($r['request_type'] ?? 'Other'); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <div class="fw-semibold" style="max-width:220px;">
-                                    <?php echo htmlspecialchars($r['machine_name'] ?? '—'); ?>
-                                </div>
-                                <?php if (!empty($r['issue_description'])): ?>
-                                <div class="text-muted small" style="max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    <?php echo htmlspecialchars($r['issue_description']); ?>
-                                </div>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <span class="badge <?php echo $p_class; ?> rounded-pill">
-                                    <?php echo htmlspecialchars($r['priority']); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge <?php echo $s_class; ?> rounded-pill px-3">
-                                    <?php echo htmlspecialchars($r['status']); ?>
-                                </span>
-                            </td>
-                            <td class="text-muted small">
-                                <?php echo date('M d, Y', strtotime($r['created_at'])); ?><br>
-                                <span style="font-size:0.72rem;"><?php echo date('h:i A', strtotime($r['created_at'])); ?></span>
-                            </td>
-                            <?php if ($filter_dir === 'incoming'): ?>
-                            <td class="pe-4">
-                                <form method="POST" class="d-flex gap-1">
-                                    <input type="hidden" name="req_id" value="<?php echo (int)$r['id']; ?>">
-                                    <?php if ($r['status'] === 'Pending'): ?>
-                                        <input type="hidden" name="status_value" value="In Progress">
-                                        <button type="submit" name="update_status"
-                                                class="btn btn-sm btn-outline-primary rounded-pill px-2">
-                                            <i class="bi bi-play-fill"></i> Start
-                                        </button>
-                                    <?php elseif ($r['status'] === 'In Progress'): ?>
-                                        <input type="hidden" name="status_value" value="Completed">
-                                        <button type="submit" name="update_status"
-                                                class="btn btn-sm btn-success rounded-pill px-2">
-                                            <i class="bi bi-check-lg"></i> Done
-                                        </button>
-                                    <?php else: ?>
-                                        <span class="text-muted small">
-                                            <i class="bi bi-check-circle-fill text-success"></i>
-                                            <?php echo htmlspecialchars($r['status']); ?>
-                                        </span>
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-table text-primary me-2"></i>
+                        <?php echo $filter_dir === 'outgoing' ? 'Outgoing Requests' : 'Incoming Requests'; ?>
+                        <span class="badge bg-primary ms-2"><?php echo count($requests); ?> records</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-person text-muted me-1"></i>Requested By
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-building text-muted me-1"></i><?php echo $filter_dir === 'outgoing' ? 'To (Receiver)' : 'From (Sender)'; ?>
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-tag text-muted me-1"></i>Type
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-gear text-muted me-1"></i>Subject / Asset
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-flag text-muted me-1"></i>Priority
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-activity text-muted me-1"></i>Status
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-calendar text-muted me-1"></i>Date
+                                    </th>
+                                    <?php if ($filter_dir === 'incoming'): ?>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-gear text-muted me-1"></i>Action
+                                    </th>
                                     <?php endif; ?>
-                                </form>
-                            </td>
-                            <?php endif; ?>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                                </tr>
+                            </thead>
+                                    <tbody>
+                                <?php if (empty($requests)): ?>
+                                <tr>
+                                    <td colspan="<?php echo $filter_dir === 'incoming' ? 8 : 7; ?>" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="bi bi-inbox-fill fs-1 mb-3 d-block"></i>
+                                            <h6>No <?php echo $filter_dir; ?> Requests Found</h6>
+                                            <p class="mb-0">No requests match your current filters.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php else: ?>
+                                    <?php foreach ($requests as $r): ?>
+                                        <?php
+                                            $p_class = match($r['priority']) {
+                                                'Emergency', 'Urgent' => 'bg-danger',
+                                                'High'                => 'bg-warning text-dark',
+                                                default               => 'bg-info text-dark'
+                                            };
+                                            $s_class = match($r['status']) {
+                                                'Completed'   => 'bg-success',
+                                                'In Progress' => 'bg-primary',
+                                                'Rejected'    => 'bg-danger',
+                                                default       => 'bg-secondary'
+                                            };
+                                            $rt_icons = [
+                                                'Repair'         => '🔧',
+                                                'Manpower'       => '👥',
+                                                'Resource'       => '📦',
+                                                'Legal'          => '⚖️',
+                                                'Maintenance'    => '🛠️',
+                                                'Administrative' => '📋',
+                                                'Other'          => '📌',
+                                            ];
+                                            $rt_icon = $rt_icons[$r['request_type']] ?? '📌';
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold">
+                                                    <?php echo htmlspecialchars($r['requester_name'] ?? 'Unknown'); ?>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border">
+                                                    <?php echo htmlspecialchars(
+                                                        $filter_dir === 'outgoing'
+                                                        ? ($r['receiver_dept_name'] ?? '—')
+                                                        : ($r['sender_dept_name']   ?? '—')
+                                                    ); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border">
+                                                    <?php echo $rt_icon . ' ' . htmlspecialchars($r['request_type'] ?? 'Other'); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="fw-semibold" style="max-width: 220px;">
+                                                    <?php echo htmlspecialchars($r['machine_name'] ?? '—'); ?>
+                                                </div>
+                                                <?php if (!empty($r['issue_description'])): ?>
+                                                <div class="text-muted small text-truncate" style="max-width: 220px;">
+                                                    <?php echo htmlspecialchars($r['issue_description']); ?>
+                                                </div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <span class="badge <?php echo $p_class; ?> rounded-pill">
+                                                    <?php echo htmlspecialchars($r['priority']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge <?php echo $s_class; ?> rounded-pill">
+                                                    <?php echo htmlspecialchars($r['status']); ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-muted small">
+                                                <div><?php echo date('M d, Y', strtotime($r['created_at'])); ?></div>
+                                                <div class="small"><?php echo date('h:i A', strtotime($r['created_at'])); ?></div>
+                                            </td>
+                                            <?php if ($filter_dir === 'incoming'): ?>
+                                            <td>
+                                                <form method="POST" class="d-inline">
+                                                    <input type="hidden" name="req_id" value="<?php echo (int)$r['id']; ?>">
+                                                    <?php if ($r['status'] === 'Pending'): ?>
+                                                        <input type="hidden" name="status_value" value="In Progress">
+                                                        <button type="submit" name="update_status"
+                                                                class="btn btn-sm btn-outline-primary rounded-pill">
+                                                            <i class="bi bi-play-fill me-1"></i>Start
+                                                        </button>
+                                                    <?php elseif ($r['status'] === 'In Progress'): ?>
+                                                        <input type="hidden" name="status_value" value="Completed">
+                                                        <button type="submit" name="update_status"
+                                                                class="btn btn-sm btn-success rounded-pill">
+                                                            <i class="bi bi-check-lg me-1"></i>Done
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <span class="text-muted small">
+                                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                                            <?php echo htmlspecialchars($r['status']); ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </form>
+                                            </td>
+                                            <?php endif; ?>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-muted small px-4 py-3">
+                    Showing <?php echo count($requests); ?> request(s).
+                </div>
             </div>
-        </div>
-        <div class="card-footer bg-transparent border-0 text-muted small px-4 py-3">
-            Showing <?php echo count($requests); ?> request(s).
         </div>
     </div>
 

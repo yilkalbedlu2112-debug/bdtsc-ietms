@@ -158,41 +158,71 @@ $all_depts_stmt = $pdo->prepare("SELECT id, dept_name FROM departments ORDER BY 
 $all_depts_stmt->execute();
 $all_depts = $all_depts_stmt->fetchAll();
 
-include '../includes/header_glass.php';
+
+require_once '../includes/header_glass.php';
 ?>
 
-<div class="container py-5">
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="fw-bold mb-2">
+                        <i class="bi bi-plus-circle text-primary me-2"></i><?php echo $dept_name; ?> | Task Creation
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Logged in as: <strong><?php echo htmlspecialchars($full_name); ?> (<?php echo $user_role; ?>)</strong>
+                    </p>
+                </div>
+                <a href="dashboard.php" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <?php if (isset($_SESSION['success'])): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-success border-0 shadow-sm">
+                <?php echo htmlspecialchars($_SESSION['success']); ?>
+                <?php unset($_SESSION['success']); ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (isset($error)): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-danger border-0 shadow-sm">
+                <?php echo $error; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Task Creation Form -->
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold text-primary"><?php echo $dept_name; ?> | Task Creation</h2>
-                    <p class="text-muted">Logged in as: <strong><?php echo $full_name; ?> (<?php echo $user_role; ?>)</strong></p>
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-4 pb-2">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-clipboard-plus text-primary me-2"></i>Create New Task
+                    </h5>
                 </div>
-                <a href="dashboard.php" class="btn btn-outline-secondary">Back</a>
-            </div>
-
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success glass-card border-0 shadow-sm">
-                    <?php echo htmlspecialchars($_SESSION['success']); ?>
-                </div>
-                <?php unset($_SESSION['success']); ?>
-            <?php endif; ?>
-            <?php if (isset($error)): ?>
-                <div class="alert alert-danger"><?php echo $error; ?></div>
-            <?php endif; ?>
-
-            <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
                     <form method="POST" action="save_task.php">
 
-                        <!-- Row 1: Task Type + Priority -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                        <!-- Task Type and Priority -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-lg-6">
                                 <label class="form-label text-muted small fw-bold">
-                                    <i class="bi bi-tag-fill me-1"></i> TASK TYPE / CATEGORY
+                                    <i class="bi bi-tag-fill text-primary me-1"></i>TASK TYPE / CATEGORY
                                 </label>
-                                <select name="task_type" class="form-select bg-light border-0 py-2" required>
+                                <select name="task_type" class="form-select" required>
                                     <option value="">Select Task Type</option>
                                     <?php foreach ($task_type_options as $option): ?>
                                         <option value="<?php echo htmlspecialchars($option); ?>">
@@ -201,9 +231,11 @@ include '../includes/header_glass.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small fw-bold">PRIORITY LEVEL</label>
-                                <select name="priority" class="form-select bg-light border-0 py-2" required>
+                            <div class="col-lg-6">
+                                <label class="form-label text-muted small fw-bold">
+                                    <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>PRIORITY LEVEL
+                                </label>
+                                <select name="priority" class="form-select" required>
                                     <option value="Normal">Normal</option>
                                     <option value="High">High</option>
                                     <option value="Emergency">Emergency</option>
@@ -211,13 +243,13 @@ include '../includes/header_glass.php';
                             </div>
                         </div>
 
-                        <!-- Row 2: Request Type + Target Department -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
+                        <!-- Request Type and Target Department -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-lg-6">
                                 <label class="form-label text-muted small fw-bold">
-                                    <i class="bi bi-arrow-left-right me-1"></i> REQUEST TYPE
+                                    <i class="bi bi-arrow-left-right text-info me-1"></i>REQUEST TYPE
                                 </label>
-                                <select name="request_type" class="form-select bg-light border-0 py-2" required>
+                                <select name="request_type" class="form-select" required>
                                     <option value="Administrative">Administrative</option>
                                     <option value="Repair">Repair (Engineering)</option>
                                     <option value="Manpower">Manpower (HR)</option>
@@ -227,11 +259,11 @@ include '../includes/header_glass.php';
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-lg-6">
                                 <label class="form-label text-muted small fw-bold">
-                                    <i class="bi bi-buildings me-1"></i> TARGET DEPARTMENT
+                                    <i class="bi bi-building text-secondary me-1"></i>TARGET DEPARTMENT
                                 </label>
-                                <select name="receiver_dept_id" class="form-select bg-light border-0 py-2" required>
+                                <select name="receiver_dept_id" class="form-select" required>
                                     <option value="<?php echo $dept_id; ?>">-- Own Department (Internal) --</option>
                                     <?php foreach ($all_depts as $d): ?>
                                         <?php if ($d['id'] == $dept_id) continue; ?>
@@ -243,24 +275,30 @@ include '../includes/header_glass.php';
                             </div>
                         </div>
 
-                        <!-- Subject / Machine Name -->
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold"><?php echo $task_label; ?></label>
-                            <input type="text" name="title" class="form-control bg-light border-0" placeholder="e.g., Daily Spinning Report" required>
+                        <!-- Subject/Title -->
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-bold">
+                                <?php echo $task_label; ?>
+                            </label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g., Daily Spinning Report" required>
                         </div>
 
                         <!-- Description -->
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold">TECHNICAL INSTRUCTIONS / DESCRIPTION</label>
-                            <textarea name="description" class="form-control bg-light border-0" rows="4"
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-file-text text-success me-1"></i>TECHNICAL INSTRUCTIONS / DESCRIPTION
+                            </label>
+                            <textarea name="description" class="form-control" rows="4"
                                       required placeholder="ዝርዝር የስራ መመሪያ እዚህ ይጥቀሱ..."></textarea>
                         </div>
 
-                        <!-- Row 3: Assign To + Deadline -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small fw-bold">ASSIGN TO STAFF (OPTIONAL)</label>
-                                <select name="assigned_to" class="form-select bg-light border-0 py-2">
+                        <!-- Assign To and Deadline -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-lg-6">
+                                <label class="form-label text-muted small fw-bold">
+                                    <i class="bi bi-person-fill text-info me-1"></i>ASSIGN TO STAFF (OPTIONAL)
+                                </label>
+                                <select name="assigned_to" class="form-select">
                                     <option value="">Select Employee</option>
                                     <?php foreach ($dept_staff as $staff): ?>
                                         <option value="<?php echo $staff['id']; ?>">
@@ -270,14 +308,17 @@ include '../includes/header_glass.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small fw-bold">DEADLINE</label>
-                                <input type="datetime-local" name="due_date" class="form-control bg-light border-0" id="due_date" required>
+                            <div class="col-lg-6">
+                                <label class="form-label text-muted small fw-bold">
+                                    <i class="bi bi-calendar-event text-danger me-1"></i>DEADLINE
+                                </label>
+                                <input type="datetime-local" name="due_date" class="form-control" id="due_date" required>
                             </div>
                         </div>
 
-                        <div class="mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold">
+                        <!-- Submit Button -->
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
                                 <i class="bi bi-check2-circle me-2"></i>Create & Log Task
                             </button>
                         </div>

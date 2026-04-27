@@ -60,120 +60,159 @@ $my_tasks = $stmt->fetchAll();
 include '../includes/header_glass.php';
 ?>
 
-<div class="container-fluid py-4">
+<div class="container-fluid">
+    <!-- Welcome Header -->
     <div class="row mb-4">
-        <div class="col-12 d-flex justify-content-between align-items-center bg-white p-3 rounded-4 shadow-sm border-start border-5 border-<?= $theme_color ?>">
-            <div>
-                <h4 class="fw-bold mb-0">ሰላም፣ <?= htmlspecialchars($_SESSION['full_name']) ?> 👋</h4>
-                <small class="text-muted fw-bold text-uppercase"><?= htmlspecialchars($dept_name) ?> | <?= htmlspecialchars($user_role) ?></small>
-            </div>
-            <div class="text-end">
-                <div class="fw-bold fs-5 text-uppercase"><?= date('h:i A') ?></div>
-                <div class="small text-muted"><?= date('D, M d, Y') ?></div>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="fw-bold mb-1">
+                                <i class="bi bi-person-circle text-<?= $theme_color ?> me-2"></i>ሰላም፣ <?= htmlspecialchars($_SESSION['full_name']) ?> 👋
+                            </h2>
+                            <p class="text-muted mb-0">
+                                <span class="badge bg-<?= $theme_color ?> bg-opacity-10 text-<?= $theme_color ?> me-2">
+                                    <?= htmlspecialchars($dept_name) ?>
+                                </span>
+                                <span class="badge bg-light text-dark">
+                                    <?= htmlspecialchars($user_role) ?>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <div class="h4 fw-bold text-<?= $theme_color ?> mb-0"><?= date('h:i A') ?></div>
+                            <div class="small text-muted"><?= date('D, M d, Y') ?></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Main Content -->
     <div class="row g-4">
+        <!-- Tasks Section -->
         <div class="col-lg-8">
-            <h5 class="fw-bold mb-3"><i class="bi bi-card-checklist me-2 text-<?= $theme_color ?>"></i><?= __('my_tasks') ?> (የተመደቡልኝ ስራዎች)</h5>
-            
-            <?php foreach($my_tasks as $task): ?>
-            <div class="glass-card p-4 mb-3 border-0 shadow-sm position-relative overflow-hidden bg-white rounded-4" id="task-card-<?= $task['id'] ?>">
-                <div class="position-absolute top-0 start-0 h-100 bg-<?= ($task['priority'] == 'High' || $task['priority'] == 'Urgent') ? 'danger' : ($task['priority'] == 'Medium' ? 'warning' : 'success') ?>" style="width: 5px;"></div>
-                
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="ms-2 flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="fw-bold text-dark fs-5 mb-1"><?= htmlspecialchars($task['title'] ?? 'No Title') ?></h6>
-                            <button class="btn btn-sm btn-outline-primary" onclick="viewTaskDetails(<?= $task['id'] ?>)">
-                                <i class="bi bi-eye"></i> View Details
-                            </button>
-                        </div>
-                        <p class="text-muted mb-2 small"><?= htmlspecialchars(substr($task['description'] ?? $task['issue_description'], 0, 100)) ?>...</p>
-                        <div class="d-flex gap-3 mt-3 flex-wrap">
-                            <span class="small text-muted"><i class="bi bi-calendar-event me-1"></i> 
-                                <?= __('deadline') ?>: <?= $task['deadline'] ? date('M d, Y', strtotime($task['deadline'])) : __('no_deadline') ?>
-                            </span>
-                            <span class="badge bg-light text-dark border mb-2 small text-uppercase">
-                                <?= __('priority') ?>: <?= htmlspecialchars($task['priority']) ?>
-                            </span>
-                            <span id="status-badge-<?= $task['id'] ?>" class="badge rounded-pill px-3 py-2 <?= 
-                                ($task['status'] == 'Completed') ? 'bg-success' : 
-                                ($task['status'] == 'In Progress' ? 'bg-primary' : 
-                                ($task['status'] == 'Under Review' ? 'bg-warning' : 'bg-secondary')) ?> text-white">
-                                <?= $task['status'] ?>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="d-flex flex-column gap-2 ms-3">
-                        <?php if($task['status'] !== 'Completed' && $task['status'] !== 'Under Review'): ?>
-                        <div class="dropdown">
-                            <button class="btn btn-light btn-sm shadow-sm px-3 rounded-pill dropdown-toggle" data-bs-toggle="dropdown">
-                                <?= __('update_status') ?>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                                <?php if($task['status'] == 'Pending'): ?>
-                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'In Progress')">
-                                        <i class="bi bi-play-circle text-primary me-2"></i><?= __('status_in_progress') ?></a></li>
-                                <?php elseif($task['status'] == 'In Progress'): ?>
-                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'Blocked')">
-                                        <i class="bi bi-slash-circle text-warning me-2"></i><?= __('status_blocked') ?></a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item fw-bold text-success" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'Under Review')">
-                                        <i class="bi bi-check-all me-2"></i><?= __('mark_completed') ?></a></li>
-                                <?php elseif($task['status'] == 'Blocked'): ?>
-                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'In Progress')">
-                                        <i class="bi bi-play-circle text-primary me-2"></i><?= __('resume') ?> (<?= __('status_in_progress') ?>)</a></li>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
-                        <?php else: ?>
-                            <span class="text-success fw-bold small"><i class="bi bi-check-circle-fill me-1"></i> 
-                                <?= $task['status'] == 'Completed' ? __('status_completed') : __('status_under_review') ?>
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
+            <h4 class="fw-bold mb-3">
+                <i class="bi bi-card-checklist text-<?= $theme_color ?> me-2"></i>My Tasks (የተመደቡልኝ ስራዎች)
+            </h4>
 
             <?php if(empty($my_tasks)): ?>
-                <div class="text-center py-5 bg-white rounded-4 shadow-sm">
-                    <i class="bi bi-clipboard-x fs-1 text-muted mb-2"></i>
-                    <p class="text-muted"><?= __('no_tasks') ?></p>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-clipboard-x fs-1 text-muted mb-3"></i>
+                        <h5 class="text-muted">No tasks assigned</h5>
+                        <p class="text-muted small">You don't have any tasks assigned at the moment.</p>
+                    </div>
                 </div>
+            <?php else: ?>
+                <?php foreach($my_tasks as $task): ?>
+                <div class="card border-0 shadow-sm mb-3" id="task-card-<?= $task['id'] ?>">
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="d-flex align-items-start mb-3">
+                                    <div class="flex-grow-1">
+                                        <h5 class="fw-bold mb-2"><?= htmlspecialchars($task['title'] ?? 'No Title') ?></h5>
+                                        <p class="text-muted small mb-3">
+                                            <?= htmlspecialchars(substr($task['description'] ?? $task['issue_description'], 0, 120)) ?>...
+                                        </p>
+                                    </div>
+                                    <button class="btn btn-outline-primary btn-sm ms-3" onclick="viewTaskDetails(<?= $task['id'] ?>)">
+                                        <i class="bi bi-eye me-1"></i>View Details
+                                    </button>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-auto">
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar-event me-1"></i>
+                                            Deadline: <?= $task['deadline'] ? date('M d, Y', strtotime($task['deadline'])) : 'No deadline' ?>
+                                        </small>
+                                    </div>
+                                    <div class="col-auto">
+                                        <span class="badge bg-light text-dark">
+                                            Priority: <?= htmlspecialchars($task['priority']) ?>
+                                        </span>
+                                    </div>
+                                    <div class="col-auto">
+                                        <span id="status-badge-<?= $task['id'] ?>" class="badge <?=
+                                            ($task['status'] == 'Completed') ? 'bg-success' :
+                                            ($task['status'] == 'In Progress' ? 'bg-primary' :
+                                            ($task['status'] == 'Under Review' ? 'bg-warning text-dark' : 'bg-secondary')) ?>">
+                                            <?= $task['status'] ?>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                                <?php if($task['status'] !== 'Completed' && $task['status'] !== 'Under Review'): ?>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        Update Status
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <?php if($task['status'] == 'Pending'): ?>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'In Progress')">
+                                                <i class="bi bi-play-circle text-primary me-2"></i>In Progress</a></li>
+                                        <?php elseif($task['status'] == 'In Progress'): ?>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'Blocked')">
+                                                <i class="bi bi-slash-circle text-warning me-2"></i>Blocked</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item fw-bold text-success" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'Under Review')">
+                                                <i class="bi bi-check-all me-2"></i>Mark Completed</a></li>
+                                        <?php elseif($task['status'] == 'Blocked'): ?>
+                                            <li><a class="dropdown-item" href="javascript:void(0)" onclick="updateTaskStatus(<?= $task['id'] ?>, 'In Progress')">
+                                                <i class="bi bi-play-circle text-primary me-2"></i>Resume (In Progress)</a></li>
+                                        <?php endif; ?>
+                                    </ul>
+                                </div>
+                                <?php else: ?>
+                                    <span class="text-success fw-semibold small">
+                                        <i class="bi bi-check-circle-fill me-1"></i>
+                                        <?= $task['status'] == 'Completed' ? 'Completed' : 'Under Review' ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
             <?php endif; ?>
         </div>
 
+        <!-- Feedback Form Sidebar -->
         <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-4 sticky-top" style="top: 20px;">
-                <div class="card-header bg-<?= $theme_color ?> text-white p-3 border-0 rounded-top-4">
-                    <h5 class="mb-0 fw-bold"><i class="bi <?= $btn_extra_icon ?> me-2"></i> <?= $btn_extra_name ?></h5>
+            <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-<?= $theme_color ?> text-white border-0">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi <?= $btn_extra_icon ?> me-2"></i><?= $btn_extra_name ?>
+                    </h5>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body">
                     <form onsubmit="submitFeedback(event)" id="feedbackForm">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold"><?= __('category') ?></label>
-                            <select class="form-select bg-light border-0" id="issue_category" required>
+                            <label class="form-label fw-semibold">Category</label>
+                            <select class="form-select" id="issue_category" required>
                                 <?php if($is_production): ?>
-                                    <option value="Technical"><?= __('technical') ?> (የቴክኒክ ብልሽት)</option>
-                                    <option value="Material"><?= __('material') ?> (የጥሬ እቃ እጥረት)</option>
+                                    <option value="Technical">Technical (የቴክኒክ ብልሽት)</option>
+                                    <option value="Material">Material (የጥሬ እቃ እጥረት)</option>
                                     <option value="Safety">Safety (የደህንነት ስጋት)</option>
                                 <?php else: ?>
-                                    <option value="Administrative"><?= __('administrative') ?> (አስተዳደራዊ)</option>
+                                    <option value="Administrative">Administrative (አስተዳደራዊ)</option>
                                     <option value="Resource">Resource (የግብዓት እጥረት)</option>
                                     <option value="System">System (የሲስተም ችግር)</option>
                                 <?php endif; ?>
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold"><?= __('description') ?></label>
-                            <textarea class="form-control bg-light border-0" id="issue_desc" rows="4" placeholder="<?= __('submit_feedback') ?>ን እዚህ ይግለጹ..." required></textarea>
+                            <label class="form-label fw-semibold">Description</label>
+                            <textarea class="form-control" id="issue_desc" rows="4" placeholder="Describe your issue here..." required></textarea>
                         </div>
-                        <button type="submit" class="btn btn-<?= $theme_color ?> w-100 py-2 fw-bold rounded-pill text-white">
-                            ሪፖርት ላክ (<?= __('submit_feedback') ?>)
+                        <button type="submit" class="btn btn-<?= $theme_color ?> w-100 fw-semibold">
+                            Submit Report
                         </button>
                     </form>
                 </div>
@@ -183,12 +222,12 @@ include '../includes/header_glass.php';
 </div>
 
 <!-- Task Details Modal -->
-<div class="modal fade" id="taskDetailsModal" tabindex="-1" aria-labelledby="taskDetailsModalLabel" aria-hidden="true">
+<div class="modal fade" id="taskDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="taskDetailsModalLabel"><?= __('task_details') ?></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Task Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="taskDetailsContent">
                 <!-- Content will be loaded here -->
@@ -198,30 +237,30 @@ include '../includes/header_glass.php';
 </div>
 
 <!-- Feedback Modal for Blocked Tasks -->
-<div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+<div class="modal fade" id="feedbackModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="feedbackModalLabel"><?= __('submit_feedback') ?> (<?= __('status_blocked') ?> Task)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Submit Feedback (Blocked Task)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="blockedFeedbackForm">
                     <input type="hidden" id="blocked_task_id" name="task_id">
                     <div class="mb-3">
-                        <label class="form-label fw-bold"><?= __('category') ?></label>
+                        <label class="form-label fw-semibold">Category</label>
                         <select class="form-select" id="blocked_category" name="category" required>
-                            <option value="Technical"><?= __('technical') ?></option>
-                            <option value="Material"><?= __('material') ?></option>
-                            <option value="Administrative"><?= __('administrative') ?></option>
+                            <option value="Technical">Technical</option>
+                            <option value="Material">Material</option>
+                            <option value="Administrative">Administrative</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold"><?= __('description') ?></label>
-                        <textarea class="form-control" id="blocked_description" name="description" rows="4" 
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea class="form-control" id="blocked_description" name="description" rows="4"
                                 placeholder="Describe the issue blocking this task..." required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100"><?= __('submit_feedback') ?></button>
+                    <button type="submit" class="btn btn-primary w-100">Submit Feedback</button>
                 </form>
             </div>
         </div>
@@ -242,9 +281,9 @@ function updateTaskStatus(taskId, newStatus) {
         if(data.success) {
             // Update status badge
             const badge = document.getElementById('status-badge-' + taskId);
-            badge.className = 'badge rounded-pill px-3 py-2 ' + getStatusClass(newStatus) + ' text-white';
+            badge.className = 'badge ' + getStatusClass(newStatus);
             badge.textContent = newStatus;
-            
+
             // If status changed to Blocked, show feedback modal
             if(newStatus === 'Blocked') {
                 document.getElementById('blocked_task_id').value = taskId;
@@ -266,7 +305,7 @@ function getStatusClass(status) {
     switch(status) {
         case 'Completed': return 'bg-success';
         case 'In Progress': return 'bg-primary';
-        case 'Under Review': return 'bg-warning';
+        case 'Under Review': return 'bg-warning text-dark';
         case 'Blocked': return 'bg-danger';
         default: return 'bg-secondary';
     }
@@ -335,7 +374,7 @@ function submitFeedback(e) {
 document.getElementById('blockedFeedbackForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const formData = new FormData(this);
-    
+
     fetch('submit_feedback_ajax.php', {
         method: 'POST',
         body: formData

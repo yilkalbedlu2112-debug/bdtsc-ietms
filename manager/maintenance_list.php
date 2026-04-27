@@ -76,140 +76,191 @@ $counts = $cnt_stmt->fetch();
 include '../includes/header_glass.php';
 ?>
 
-<div class="container-fluid py-4">
+<div class="container-fluid">
 
     <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-        <div>
-            <h2 class="h4 fw-bold mb-1">
-                <i class="bi bi-tools text-primary me-2"></i>
-                <?php echo $is_eng_manager ? 'System-Wide' : htmlspecialchars($dept_name); ?>
-                Maintenance &amp; Task Log
-            </h2>
-            <p class="text-muted small mb-0">
-                All tasks and requests
-                <?php echo $is_eng_manager ? 'across all departments' : 'sent from your department'; ?>.
-            </p>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <h2 class="fw-bold mb-2">
+                        <i class="bi bi-tools text-primary me-2"></i>
+                        <?php echo $is_eng_manager ? 'System-Wide' : htmlspecialchars($dept_name); ?>
+                        Maintenance & Task Log
+                    </h2>
+                    <p class="text-muted mb-0">
+                        All tasks and requests
+                        <?php echo $is_eng_manager ? 'across all departments' : 'sent from your department'; ?>.
+                    </p>
+                </div>
+                <a href="create_task.php" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>New Request
+                </a>
+            </div>
         </div>
-        <a href="create_task.php" class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> New Request
-        </a>
     </div>
 
     <!-- KPI Cards -->
     <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-primary border-4">
-                <div class="h4 fw-bold text-primary mb-0"><?php echo (int)$counts['total']; ?></div>
-                <div class="small text-muted fw-semibold">Total</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-primary mb-1"><?php echo (int)$counts['total']; ?></div>
+                    <div class="small text-muted fw-semibold">Total</div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-warning border-4">
-                <div class="h4 fw-bold text-warning mb-0"><?php echo (int)$counts['pending']; ?></div>
-                <div class="small text-muted fw-semibold">Pending</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-warning mb-1"><?php echo (int)$counts['pending']; ?></div>
+                    <div class="small text-muted fw-semibold">Pending</div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-info border-4">
-                <div class="h4 fw-bold text-info mb-0"><?php echo (int)$counts['in_prog']; ?></div>
-                <div class="small text-muted fw-semibold">In Progress</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-info mb-1"><?php echo (int)$counts['in_prog']; ?></div>
+                    <div class="small text-muted fw-semibold">In Progress</div>
+                </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card glass-card border-0 shadow-sm text-center py-3 border-bottom border-success border-4">
-                <div class="h4 fw-bold text-success mb-0"><?php echo (int)$counts['done']; ?></div>
-                <div class="small text-muted fw-semibold">Completed</div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm text-center py-3">
+                <div class="card-body">
+                    <div class="h4 fw-bold text-success mb-1"><?php echo (int)$counts['done']; ?></div>
+                    <div class="small text-muted fw-semibold">Completed</div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="card glass-card border-0 shadow-sm mb-4">
-        <div class="card-body py-3 px-4">
-            <form method="GET" class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold mb-1">STATUS</label>
-                    <select name="status" class="form-select form-select-sm bg-light border-0" onchange="this.form.submit()">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-0 pt-4 pb-2">
+            <h5 class="fw-bold mb-0">
+                <i class="bi bi-funnel text-secondary me-2"></i>Filter Tasks
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label text-muted small fw-bold">
+                        <i class="bi bi-flag text-info me-1"></i>Status
+                    </label>
+                    <select name="status" class="form-select">
                         <option value="">All Statuses</option>
                         <?php foreach (['Pending','In Progress','Completed','Rejected'] as $s): ?>
-                        <option value="<?php echo $s; ?>" <?php echo ($status_filter === $s) ? 'selected' : ''; ?>>
-                            <?php echo $s; ?>
-                        </option>
+                            <option value="<?php echo $s; ?>" <?php echo ($status_filter === $s) ? 'selected' : ''; ?>>
+                                <?php echo $s; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold mb-1">PRIORITY</label>
-                    <select name="priority" class="form-select form-select-sm bg-light border-0" onchange="this.form.submit()">
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label text-muted small fw-bold">
+                        <i class="bi bi-exclamation-triangle text-warning me-1"></i>Priority
+                    </label>
+                    <select name="priority" class="form-select">
                         <option value="">All Priorities</option>
                         <?php foreach (['Emergency','Urgent','High','Normal'] as $p): ?>
-                        <option value="<?php echo $p; ?>" <?php echo ($priority_filter === $p) ? 'selected' : ''; ?>>
-                            <?php echo $p; ?>
-                        </option>
+                            <option value="<?php echo $p; ?>" <?php echo ($priority_filter === $p) ? 'selected' : ''; ?>>
+                                <?php echo $p; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label text-muted small fw-bold mb-1">REQUEST TYPE</label>
-                    <select name="request_type" class="form-select form-select-sm bg-light border-0" onchange="this.form.submit()">
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label text-muted small fw-bold">
+                        <i class="bi bi-tag text-success me-1"></i>Request Type
+                    </label>
+                    <select name="request_type" class="form-select">
                         <option value="">All Types</option>
                         <?php foreach (['Repair','Manpower','Resource','Legal','Maintenance','Administrative','Other'] as $rt): ?>
-                        <option value="<?php echo $rt; ?>" <?php echo ($type_filter === $rt) ? 'selected' : ''; ?>>
-                            <?php echo $rt; ?>
-                        </option>
+                            <option value="<?php echo $rt; ?>" <?php echo ($type_filter === $rt) ? 'selected' : ''; ?>>
+                                <?php echo $rt; ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <a href="maintenance_list.php" class="btn btn-outline-secondary btn-sm rounded-pill w-100">
-                        <i class="bi bi-x-circle me-1"></i> Reset
-                    </a>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-fill">
+                            <i class="bi bi-search me-1"></i>Filter
+                        </button>
+                        <a href="maintenance_list.php" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>Clear
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- Tasks Table -->
-    <div class="card glass-card border-0 shadow-sm">
-        <div class="card-header bg-transparent border-0 pt-4 pb-2 px-4">
-            <h6 class="fw-bold mb-0">
-                <i class="bi bi-table me-2 text-primary"></i>Task Records
-                <span class="badge bg-primary-subtle text-primary ms-2 px-2 py-1 rounded-pill">
-                    <?php echo count($tasks); ?> records
-                </span>
-            </h6>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="maintenanceTable">
-                    <thead class="table-light">
-                        <tr class="text-uppercase text-muted" style="font-size:0.72rem; letter-spacing:.5px;">
-                            <th class="ps-4">#</th>
-                            <th>Subject / Machine</th>
-                            <?php if ($is_eng_manager): ?>
-                            <th>From Dept</th>
-                            <?php endif; ?>
-                            <th>To Dept</th>
-                            <th>Type</th>
-                            <th>Assigned To</th>
-                            <th>Due Date</th>
-                            <th>Priority</th>
-                            <th>Status</th>
-                            <th class="pe-4">Details</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($tasks)): ?>
-                        <tr>
-                            <td colspan="10" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                                No tasks found matching the current filters.
-                            </td>
-                        </tr>
-                        <?php endif; ?>
-
-                        <?php foreach ($tasks as $task): ?>
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-table text-primary me-2"></i>Task Records
+                        <span class="badge bg-primary ms-2"><?php echo count($tasks); ?> records</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-hash text-muted me-1"></i>ID
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-gear text-muted me-1"></i>Subject / Machine
+                                    </th>
+                                    <?php if ($is_eng_manager): ?>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-building text-muted me-1"></i>From Dept
+                                    </th>
+                                    <?php endif; ?>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-arrow-right text-muted me-1"></i>To Dept
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-tag text-muted me-1"></i>Type
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-person text-muted me-1"></i>Assigned To
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-calendar text-muted me-1"></i>Due Date
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-flag text-muted me-1"></i>Priority
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-activity text-muted me-1"></i>Status
+                                    </th>
+                                    <th class="border-0 fw-bold">
+                                        <i class="bi bi-eye text-muted me-1"></i>Details
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($tasks)): ?>
+                                <tr>
+                                    <td colspan="<?php echo $is_eng_manager ? 10 : 9; ?>" class="text-center py-5">
+                                        <div class="text-muted">
+                                            <i class="bi bi-inbox-fill fs-1 mb-3 d-block"></i>
+                                            <h6>No Tasks Found</h6>
+                                            <p class="mb-0">No tasks match your current filters.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php else: ?>
+                                <?php foreach ($tasks as $task): ?>
                         <?php
                             $p_class = match($task['priority']) {
                                 'Emergency', 'Urgent' => 'bg-danger',
@@ -238,8 +289,10 @@ include '../includes/header_glass.php';
                             $detail_id = 'detail_' . $task['id'];
                         ?>
                         <!-- Main row -->
-                        <tr>
-                            <td class="ps-4 text-muted small">#<?php echo $task['id']; ?></td>
+                                        <tr>
+                                            <td>
+                                                <span class="text-muted small">#<?php echo $task['id']; ?></span>
+                                            </td>
                             <td>
                                 <div class="fw-semibold text-dark">
                                     <?php echo htmlspecialchars($task['machine_name'] ?? '—'); ?>
@@ -288,55 +341,58 @@ include '../includes/header_glass.php';
                                 </span>
                             </td>
                             <!-- Fix 3: Replace broken view_task/edit_task links with inline expand -->
-                            <td class="pe-4">
-                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3"
-                                        type="button"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#<?php echo $detail_id; ?>"
-                                        aria-expanded="false">
-                                    <i class="bi bi-chevron-down"></i>
-                                </button>
-                            </td>
-                        </tr>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3"
+                                                        type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#<?php echo $detail_id; ?>"
+                                                        aria-expanded="false">
+                                                    <i class="bi bi-chevron-down"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
 
-                        <!-- Fix 3: Inline expandable detail row (replaces missing view_task.php) -->
-                        <tr class="collapse" id="<?php echo $detail_id; ?>">
-                            <td colspan="<?php echo $is_eng_manager ? 10 : 9; ?>" class="bg-light border-0 p-0">
-                                <div class="px-4 py-3 border-start border-4 border-primary" style="font-size:0.87rem;">
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <div class="text-muted small fw-bold mb-1">FULL DESCRIPTION</div>
-                                            <p class="mb-0"><?php echo nl2br(htmlspecialchars($task['issue_description'] ?? 'No description provided.')); ?></p>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="text-muted small fw-bold mb-1">SUBMITTED BY</div>
-                                            <p class="mb-0"><?php echo htmlspecialchars($task['requester'] ?? 'Unknown'); ?></p>
-                                            <div class="text-muted small mt-1">
-                                                <?php echo date('M d, Y — h:i A', strtotime($task['created_at'])); ?>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="text-muted small fw-bold mb-1">ROUTING</div>
-                                            <p class="mb-1">
-                                                <span class="text-muted">From:</span>
-                                                <?php echo htmlspecialchars($task['sender_dept_name'] ?? '—'); ?>
-                                            </p>
-                                            <p class="mb-0">
-                                                <span class="text-muted">To:</span>
-                                                <?php echo htmlspecialchars($task['receiver_dept_name'] ?? '—'); ?>
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
+                                        <!-- Expandable Details Row -->
+                                        <tr class="collapse" id="<?php echo $detail_id; ?>">
+                                            <td colspan="<?php echo $is_eng_manager ? 10 : 9; ?>" class="bg-light border-0 p-0">
+                                                <div class="px-4 py-3 border-start border-4 border-primary">
+                                                    <div class="row g-3">
+                                                        <div class="col-md-6">
+                                                            <div class="text-muted small fw-bold mb-1">FULL DESCRIPTION</div>
+                                                            <p class="mb-0"><?php echo nl2br(htmlspecialchars($task['issue_description'] ?? 'No description provided.')); ?></p>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-muted small fw-bold mb-1">SUBMITTED BY</div>
+                                                            <p class="mb-0"><?php echo htmlspecialchars($task['requester'] ?? 'Unknown'); ?></p>
+                                                            <div class="text-muted small mt-1">
+                                                                <?php echo date('M d, Y — h:i A', strtotime($task['created_at'])); ?>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-muted small fw-bold mb-1">ROUTING</div>
+                                                            <p class="mb-1">
+                                                                <span class="text-muted">From:</span>
+                                                                <?php echo htmlspecialchars($task['sender_dept_name'] ?? '—'); ?>
+                                                            </p>
+                                                            <p class="mb-0">
+                                                                <span class="text-muted">To:</span>
+                                                                <?php echo htmlspecialchars($task['receiver_dept_name'] ?? '—'); ?>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
                         <?php endforeach; ?>
+                                <?php endif; ?>
                     </tbody>
-                </table>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent border-0 text-muted small px-4 py-3">
+                    Showing <?php echo count($tasks); ?> of up to 200 most recent records.
+                </div>
             </div>
-        </div>
-        <div class="card-footer bg-transparent border-0 text-muted small px-4 py-3">
-            Showing <?php echo count($tasks); ?> of up to 200 most recent records.
         </div>
     </div>
 

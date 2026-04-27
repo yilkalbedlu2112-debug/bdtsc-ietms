@@ -1,114 +1,131 @@
 <?php 
 require_once '../includes/db.php';
 session_start();
+
+// ሴኩሪቲ ቼክ
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
     header("Location: ../auth/login.php");
     exit();
 }
+
 include '../includes/header_glass.php';
 
-// 1. መረጃውን ከዳታቤዝ ማምጣት (ከነ ሰራተኛው ስም ጋር)
-$query = "SELECT l.*, u.full_name, u.user_role 
-          FROM audit_logs l 
-          LEFT JOIN users u ON l.user_id = u.id 
-          ORDER BY l.created_at DESC";
-$logs = $pdo->query($query)->fetchAll();
+// 1. የጊዜ ገደብ መፈለጊያ (Date Filter) Logic
+$start_date = $_GET['start_date'] ?? '';
+$end_date = $_GET['end_date'] ?? '';
+
+$query_str = "SELECT l.*, u.full_name, u.user_role 
+              FROM audit_logs l 
+              LEFT JOIN users u ON l.user_id = u.id";
+
+if (!empty($start_date) && !empty($end_date)) {
+    $query_str .= " WHERE DATE(l.created_at) BETWEEN :start AND :end";
+}
+
+$query_str .= " ORDER BY l.created_at DESC";
+
+$stmt = $pdo->prepare($query_str);
+if (!empty($start_date) && !empty($end_date)) {
+    $stmt->execute(['start' => $start_date, 'end' => $end_date]);
+} else {
+    $stmt->execute();
+}
+$logs = $stmt->fetchAll();
+
+// የአክሽን ከለር ፈንክሽን
+function getActionBadge($action) {
+    $action = strtolower($action);
+    if (strpos($action, 'delete') !== false || strpos($action, 'failed') !== false || strpos($action, 'force') !== false) {
+        return 'bg-danger';
+    } elseif (strpos($action, 'login') !== false || strpos($action, 'create') !== false || strpos($action, 'add') !== false) {
+        return 'bg-success';
+    } elseif (strpos($action, 'update') !== false || strpos($action, 'assign') !== false || strpos($action, 'verify') !== false) {
+        return 'bg-warning text-dark';
+    }
+    return 'bg-primary';
+}
 ?>
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="text-dark"><i class="bi bi-shield-check text-danger me-2"></i>Audit Trail</h2>
-            <p class="text-muted mb-0">System activity monitoring and security logs</p>
+            <h2 class="text-dark fw-bold"><i class="bi bi-shield-lock-fill text-danger me-2"></i>Audit Trail</h2>
+            <p class="text-muted mb-0">Security monitoring and system activity history</p>
         </div>
-        <button onclick="window.print()" class="btn btn-outline-danger rounded-pill shadow-sm">
-            <i class="bi bi-file-earmark-pdf me-1"></i>Generate Report
-        </button>
+        <div class="btn-group shadow-sm">
+            <a href="generate_pdf.php?type=audit&start=<?= $start_date ?>&end=<?= $end_date ?>" class="btn btn-danger rounded-start-pill">
+                <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+            </a>
+            <a href="export_excel.php?type=audit" class="btn btn-success rounded-end-pill">
+                <i class="bi bi-file-earmark-excel me-1"></i> Excel
+            </a>
+        </div>
     </div>
 
-    <div class="card mb-4 border-0 shadow-sm rounded-4 p-3">
-        <div class="row g-3">
-            <div class="col-md-6">
+    <div class="card mb-4 border-0 shadow-sm rounded-4 p-3 bg-white">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">From Date</label>
+                <input type="date" name="start_date" class="form-control border-light rounded-3" value="<?= $start_date ?>">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">To Date</label>
+                <input type="date" name="end_date" class="form-control border-light rounded-3" value="<?= $end_date ?>">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted">Quick Search</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-light border-0 rounded-start-4">
-                        <i class="bi bi-search"></i>
-                    </span>
-                    <input type="text" id="searchInput" class="form-control border-0 rounded-end-4" placeholder="Search by user name or action...">
+                    <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control border-light" placeholder="Search logs...">
                 </div>
             </div>
-            <div class="col-md-6 text-end">
-                <small class="text-muted">Total Records: <strong><?php echo count($logs); ?></strong></small>
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-dark rounded-3">Filter Logs</button>
             </div>
-        </div>
+        </form>
     </div>
 
     <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
-        <div class="card-header bg-dark text-white py-3">
-            <h6 class="mb-0"><i class="bi bi-activity me-2"></i>System Activity Logs</h6>
-        </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" id="auditTable">
-                <thead class="table-dark">
+                <thead class="bg-dark text-white">
                     <tr>
-                        <th class="border-0 fw-semibold"><i class="bi bi-clock me-1"></i>Timestamp</th>
-                        <th class="border-0 fw-semibold"><i class="bi bi-person me-1"></i>User</th>
-                        <th class="border-0 fw-semibold"><i class="bi bi-shield me-1"></i>Role</th>
-                        <th class="border-0 fw-semibold"><i class="bi bi-gear me-1"></i>Action</th>
-                        <th class="border-0 fw-semibold"><i class="bi bi-info-circle me-1"></i>Details</th>
-                        <th class="border-0 fw-semibold"><i class="bi bi-globe me-1"></i>IP Address</th>
+                        <th class="py-3 px-4">Timestamp</th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <?php if (count($logs) > 0): ?>
+                <tbody class="bg-white">
+                    <?php if ($logs): ?>
                         <?php foreach ($logs as $log): ?>
-                        <tr class="border-bottom border-light">
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="bg-info bg-opacity-10 rounded-circle p-2 me-3">
-                                        <i class="bi bi-calendar-event text-info"></i>
-                                    </div>
-                                    <div>
-                                        <div class="small text-muted"><?php echo date('M d, Y', strtotime($log['created_at'])); ?></div>
-                                        <div class="fw-semibold"><?php echo date('H:i:s', strtotime($log['created_at'])); ?></div>
-                                    </div>
-                                </div>
+                        <tr>
+                            <td class="px-4">
+                                <div class="fw-bold text-dark"><?= date('H:i:s', strtotime($log['created_at'])) ?></div>
+                                <div class="small text-muted"><?= date('M d, Y', strtotime($log['created_at'])) ?></div>
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                                        <i class="bi bi-person-fill text-primary"></i>
+                                    <div class="avatar-sm bg-light rounded-circle p-2 me-2 text-center" style="width:35px">
+                                        <i class="bi bi-person text-secondary"></i>
                                     </div>
-                                    <div class="fw-semibold"><?php echo htmlspecialchars($log['full_name'] ?? 'System'); ?></div>
+                                    <span class="fw-semibold"><?= htmlspecialchars($log['full_name'] ?? 'System') ?></span>
                                 </div>
                             </td>
+                            <td><span class="badge bg-light text-dark border"><?= $log['user_role'] ?? 'System' ?></span></td>
                             <td>
-                                <span class="badge bg-light text-dark border rounded-pill px-3 py-2">
-                                    <?php echo $log['user_role'] ?? 'N/A'; ?>
+                                <span class="badge <?= getActionBadge($log['action']) ?> rounded-pill px-3">
+                                    <?= htmlspecialchars($log['action']) ?>
                                 </span>
                             </td>
-                            <td>
-                                <span class="badge bg-primary rounded-pill px-3 py-2">
-                                    <i class="bi bi-activity me-1"></i><?php echo htmlspecialchars($log['action']); ?>
-                                </span>
-                            </td>
-                            <td class="text-truncate" style="max-width: 300px;" title="<?php echo htmlspecialchars($log['details']); ?>">
-                                <?php echo htmlspecialchars($log['details']); ?>
-                            </td>
-                            <td>
-                                <code class="bg-light px-2 py-1 rounded small"><?php echo $log['ip_address']; ?></code>
-                            </td>
+                            <td class="small text-muted" style="max-width: 250px;"><?= htmlspecialchars($log['details']) ?></td>
+                            <td><code class="text-danger small"><?= $log['ip_address'] ?></code></td>
                         </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr>
-                            <td colspan="6" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="bi bi-info-circle fs-1 mb-3 d-block"></i>
-                                    <h5>No Activity Found</h5>
-                                    <p>System activity logs will appear here.</p>
-                                </div>
-                            </td>
-                        </tr>
+                        <tr><td colspan="6" class="text-center py-5 text-muted">No records found for the selected period.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -117,21 +134,15 @@ $logs = $pdo->query($query)->fetchAll();
 </div>
 
 <script>
+// Real-time Search
 document.getElementById('searchInput').addEventListener('keyup', function() {
     let filter = this.value.toUpperCase();
     let rows = document.querySelector("#auditTable tbody").rows;
     for (let i = 0; i < rows.length; i++) {
-        let text = rows[i].textContent.toUpperCase();
+        let text = rows[i].innerText.toUpperCase();
         rows[i].style.display = text.includes(filter) ? "" : "none";
     }
 });
 </script>
-
-<style>
-@media print {
-    .btn, #searchInput, .admin-sidebar { display: none !important; }
-    .container-fluid { width: 100%; margin: 0; padding: 0; }
-}
-</style>
 
 <?php include '../includes/footer_glass.php'; ?>

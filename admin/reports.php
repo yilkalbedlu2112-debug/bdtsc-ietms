@@ -82,21 +82,29 @@ include '../includes/header_glass.php';
         <h5>Industrial Machine Maintenance Performance Report</h5>
         <hr>
     </div>
+<div class="report-action-buttons d-flex gap-2">
+    <button type="button" class="btn btn-primary text-white" onclick="window.print();">
+        <i class="bi bi-printer me-1"></i> Print
+    </button>
 
-    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
-        <div>
-            <h2 class="text-dark"><i class="bi bi-journal-text me-2 text-primary"></i> Reports</h2>
-            <p class="text-muted mb-0">Summary of system activity and performance analytics.</p>
-        </div>
-        <div class="report-action-buttons d-flex gap-2">
-            <button type="button" class="btn btn-primary text-white" onclick="window.print();">
-                <i class="bi bi-printer me-1"></i> Print Report
-            </button>
-            <a href="?export=csv" class="btn btn-success text-white">
-                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
-            </a>
-        </div>
+    <div class="dropdown">
+        <button class="btn btn-success text-white dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-file-earmark-arrow-down me-1"></i> Export Data
+        </button>
+        <ul class="dropdown-menu shadow">
+            <li>
+                <a class="dropdown-item" href="export_excel.php?type=reports">
+                    <i class="bi bi-file-earmark-spreadsheet text-success"></i> Excel (CSV)
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="generate_pdf.php?type=reports" target="_blank">
+                    <i class="bi bi-file-earmark-pdf text-danger"></i> PDF Report
+                </a>
+            </li>
+        </ul>
     </div>
+</div>
 
     <div class="card shadow-sm border-0 mb-4 bg-light no-print">
         <div class="card-body">

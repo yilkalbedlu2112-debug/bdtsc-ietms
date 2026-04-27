@@ -140,99 +140,140 @@ if (isset($_POST['submit_report'])) {
 include '../includes/header_glass.php';
 ?>
 
-<div class="container py-5">
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold mb-2">
+                <i class="bi bi-bar-chart-line text-<?= $theme ?> me-2"></i><?= $form_title ?>
+            </h2>
+            <p class="text-muted mb-0">
+                <span class="badge bg-<?= $theme ?> bg-opacity-10 text-<?= $theme ?> me-2">
+                    <?= $dept_name ?>
+                </span>
+                Report to: <?= $report_to ?>
+            </p>
+        </div>
+    </div>
+
     <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
+        <div class="col-12 col-md-8 col-lg-6">
             <?= $message ?>
 
             <?php if (!$is_production_dept): ?>
-                <div class="alert alert-warning border-0 shadow-lg p-4">
-                    <h5 class="fw-bold"><i class="bi bi-shield-lock-fill me-2"></i> Access Denied</h5>
-                    <p class="mb-0 small">ይህ ፎርም ለምርት ክፍሎች ብቻ ነው።</p>
-                    <a href="dashboard.php" class="btn btn-sm btn-outline-warning mt-3 rounded-pill">ወደ ዳሽቦርድ ተመለስ</a>
+                <!-- Access Denied -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <i class="bi bi-shield-lock-fill fs-1 text-warning mb-3"></i>
+                        <h5 class="fw-bold text-warning">Access Denied</h5>
+                        <p class="text-muted">This form is only available for production departments.</p>
+                        <a href="dashboard.php" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
                 </div>
             <?php else: ?>
-                <div class="card glass-card border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="card-header bg-<?= $theme ?> text-white p-4 border-0">
-                        <h4 class="mb-0 fw-bold text-center"><?= $form_title ?></h4>
-                        <p class="small text-center opacity-75 mb-0"><?= $dept_name ?> | ሪፖርት ለ: <?= $report_to ?></p>
+                <!-- Production Report Form -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-<?= $theme ?> text-white border-0">
+                        <h5 class="mb-0 fw-bold text-center">
+                            <i class="bi bi-clipboard-data me-2"></i>Daily Production Report
+                        </h5>
+                        <p class="small text-center opacity-75 mb-0 mt-1">
+                            <?= $dept_name ?> | Report to: <?= $report_to ?>
+                        </p>
                     </div>
-                    <div class="card-body p-4 bg-white text-start">
+                    <div class="card-body">
                         <form id="productionReportForm">
                             <div class="mb-3">
-                                <label class="form-label small fw-bold">ማሽን ስም (Machine Name)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-0"><i class="bi bi-gear"></i></span>
-                                    <input type="text" name="machine_name" class="form-control bg-light border-0" placeholder="እዚህ ያስገቡ..." required>
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-gear text-muted me-1"></i>Production Type/Identifier
+                                </label>
+                                <input type="text" name="machine_name" class="form-control" placeholder="Enter machine name..." required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-hash text-muted me-1"></i>Quantity Produced
+                                </label>
+                                <input type="number" step="0.01" name="quantity_produced" class="form-control" placeholder="0.00" required>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">
+                                        <i class="bi bi-rulers text-muted me-1"></i>Unit
+                                    </label>
+                                    <select name="unit" class="form-select" required>
+                                        <option value="Meters">Meters</option>
+                                        <option value="Kg">Kilograms</option>
+                                        <option value="Pieces">Pieces</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-semibold">
+                                        <i class="bi bi-clock text-muted me-1"></i>Shift
+                                    </label>
+                                    <select name="shift" class="form-select" required>
+                                        <option value="Day(Morning)">Morning</option>
+                                        <option value="Day(Afternoon)">Afternoon</option>
+                                        <option value="Night">Night</option>
+                                    </select>
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">የተምራ መጠን (Quantity Produced)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-0"><i class="bi bi-hash"></i></span>
-                                    <input type="number" step="0.01" name="quantity_produced" class="form-control bg-light border-0" placeholder="0.00" required>
-                                </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-chat-dots text-muted me-1"></i>Remarks (Optional)
+                                </label>
+                                <textarea name="remarks" class="form-control" rows="3" placeholder="Any additional notes..."></textarea>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">አሃድ (Unit)</label>
-                                <select name="unit" class="form-select bg-light border-0" required>
-                                    <option value="Meters">በሜትር (Meters)</option>
-                                    <option value="Kg">በኪሎ ግራም (Kg)</option>
-                                    <option value="Pieces">በቁጥር (Pieces)</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">ፈረቃ (Shift)</label>
-                                <select name="shift" class="form-select bg-light border-0" required>
-                                    <option value="Day">ቀን (Day)</option>
-                                    <option value="Night">ሌሊት (Night)</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">አስተያየት (Remarks)</label>
-                                <textarea name="remarks" class="form-control bg-light border-0" rows="3" placeholder="አስፈላጊ ከሆነ..."></textarea>
-                            </div>
-
-                            <button type="submit" class="btn btn-<?= $theme ?> w-100 rounded-pill fw-bold">
-                                <i class="bi bi-send me-2"></i> ሪፖርት ላክ
+                            <button type="submit" class="btn btn-<?= $theme ?> w-100 fw-semibold">
+                                <i class="bi bi-send me-2"></i>Submit Report
                             </button>
                         </form>
                     </div>
                 </div>
+
+                <!-- Info Box -->
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <i class="bi bi-info-circle-fill text-info fs-4"></i>
+                            </div>
+                            <div class="col">
+                                <small class="text-muted">
+                                    <strong>Note:</strong> This report will be sent directly to <strong><?= $report_to ?></strong>.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             <?php endif; ?>
-            
-            <div class="mt-4 p-3 bg-light rounded-4 border-start border-4 border-<?= $theme ?>">
-                <small class="text-muted">
-                    <strong>መረጃ፦</strong> ይህ ሪፖርት በቀጥታ ለ<strong><?= $report_to ?></strong> ይደርሳል። በሰነድ ቁጥር <strong>UC-15</strong> መሰረት በቋሚነት ይመዘገባል።
-                </small>
-            </div>
         </div>
     </div>
 </div>
 
-<!-- Toast Notification -->
+<!-- Success Toast -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
         <div class="d-flex">
             <div class="toast-body">
-                <i class="bi bi-check-circle-fill me-2"></i> ሪፖርቱ በተሳካ ሁኔታ ተልኳል!
+                <i class="bi bi-check-circle-fill me-2"></i>Report submitted successfully!
             </div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 $(document).ready(function() {
     $('#productionReportForm').on('submit', function(e) {
         e.preventDefault();
-        
+
         $.ajax({
             url: '',
             type: 'POST',

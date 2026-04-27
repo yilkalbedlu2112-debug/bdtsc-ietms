@@ -12,85 +12,125 @@ $dept_id = $_SESSION['dept_id'];
 $dept_name = $_SESSION['dept_name'] ?? 'Department';
 $full_name = $_SESSION['full_name'] ?? 'Manager';
 
-include '../includes/header_glass.php';
+require_once '../includes/header_glass.php';
 ?>
 
-<div class="container-fluid py-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1 class="page-title mb-1">Generate Reports</h1>
-                    <h5 class="text-muted"><?php echo htmlspecialchars($dept_name); ?> Department</h5>
+                    <h2 class="fw-bold mb-2">
+                        <i class="bi bi-file-earmark-bar-graph text-primary me-2"></i>Generate Reports
+                    </h2>
+                    <p class="text-muted mb-0"><?php echo htmlspecialchars($dept_name); ?> Department</p>
                 </div>
-                <a href="dashboard.php" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                <a href="dashboard.php" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
                 </a>
             </div>
+        </div>
+    </div>
 
-            <?php if (isset($_GET['error'])): ?>
-                <div class="alert alert-danger alert-dismissible fade show" user_role="alert">
-                    <?php echo htmlspecialchars($_GET['error']); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif; ?>
+    <!-- Error Message -->
+    <?php if (isset($_GET['error'])): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm">
+                <?php echo htmlspecialchars($_GET['error']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
-            <div class="card glass-card border-0 shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-file-earmark-pdf"></i> Task Report Generator</h5>
+    <!-- Report Generator Form -->
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-4 pb-2">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-file-earmark-pdf text-primary me-2"></i>Task Report Generator
+                    </h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <form method="POST" action="generate_report.php">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
+
+                        <!-- Date Range -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-lg-6">
+                                <label for="start_date" class="form-label text-muted small fw-bold">
+                                    <i class="bi bi-calendar-date text-primary me-1"></i>Start Date <span class="text-danger">*</span>
+                                </label>
                                 <input type="date" class="form-control" id="start_date" name="start_date" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="end_date" class="form-label">End Date <span class="text-danger">*</span></label>
+                            <div class="col-lg-6">
+                                <label for="end_date" class="form-label text-muted small fw-bold">
+                                    <i class="bi bi-calendar-date text-success me-1"></i>End Date <span class="text-danger">*</span>
+                                </label>
                                 <input type="date" class="form-control" id="end_date" name="end_date" required>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Task Status</label>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="report_type" id="all_tasks" value="all" checked>
-                                    <label class="form-check-label" for="all_tasks">All Tasks</label>
+                        <!-- Task Status -->
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-check-circle text-info me-1"></i>Task Status
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-lg-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="report_type" id="all_tasks" value="all" checked>
+                                        <label class="form-check-label" for="all_tasks">
+                                            <i class="bi bi-list-check me-1"></i>All Tasks
+                                        </label>
+                                    </div>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="report_type" id="completed_only" value="completed">
-                                    <label class="form-check-label" for="completed_only">Completed Tasks Only</label>
+                                <div class="col-lg-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="report_type" id="completed_only" value="completed">
+                                        <label class="form-check-label" for="completed_only">
+                                            <i class="bi bi-check2-all me-1"></i>Completed Tasks Only
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Task Categories (Multiple Select)</label>
-                                <select name="task_categories[]" class="form-select" multiple style="height: 100px;">
-                                    <option value="Maintenance" selected>Maintenance</option>
-                                    <option value="Production">Production</option>
-                                    <option value="Finance">Finance</option>
-                                    <option value="Administration">Administration</option>
-                                    <option value="ICT">ICT</option>
-                                </select>
-                                <small class="text-muted">ብዙ ለመምረጥ Ctrl ተጭነው ይጫኑ</small>
                             </div>
                         </div>
 
-                        <div class="row mt-4">
-                            <div class="col-md-6">
-                                <button type="submit" name="generate_pdf" class="btn btn-danger w-100">
-                                    <i class="bi bi-file-earmark-pdf"></i> Download PDF
+                        <!-- Task Categories -->
+                        <div class="mb-4">
+                            <label class="form-label text-muted small fw-bold">
+                                <i class="bi bi-tags text-warning me-1"></i>Task Categories (Multiple Select)
+                            </label>
+                            <select name="task_categories[]" class="form-select" multiple style="height: 120px;">
+                                <option value="Maintenance" selected>Maintenance</option>
+                                <option value="Production">Production</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Administration">Administration</option>
+                                <option value="ICT">ICT</option>
+                            </select>
+                            <small class="text-muted">ብዙ ለመምረጥ Ctrl ተጭነው ይጫኑ</small>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <button type="submit" name="generate_pdf" class="btn btn-outline-danger w-100">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
                                 </button>
                             </div>
-                            <div class="col-md-6">
-                                <button type="submit" name="export_excel" formaction="export_excel.php" class="btn btn-success w-100">
-                                    <i class="bi bi-file-earmark-excel"></i> Download Excel
+                            <div class="col-lg-6">
+                                <button type="submit" name="export_excel" formaction="export_excel.php" class="btn btn-outline-success w-100">
+                                    <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
                                 </button>
                             </div>
                         </div>
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
 </div>
 
 <script>

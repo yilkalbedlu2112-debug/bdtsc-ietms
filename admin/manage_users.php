@@ -264,8 +264,22 @@ $users = $pdo->query("SELECT u.*, d.dept_name
             <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
                     <h6 class="mb-0">Registered Users</h6>
-                    <button class="btn btn-outline-light btn-sm rounded-pill" onclick="window.print();">Print / Export</button>
-                </div>
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+    <h6 class="mb-0">Registered Users</h6>
+    
+    <div class="dropdown">
+        <button class="btn btn-outline-light btn-sm rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-download"></i> Export List
+        </button>
+        <ul class="dropdown-menu shadow">
+            <li><a class="dropdown-item" href="export_excel.php?type=users"><i class="bi bi-file-earmark-excel text-success"></i> Excel (XLS)</a></li>
+            <li><a class="dropdown-item" href="generate_pdf.php?type=users" target="_blank"><i class="bi bi-file-earmark-pdf text-danger"></i> PDF (Report)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" onclick="window.print();"><i class="bi bi-printer"></i> Quick Print</a></li>
+        </ul>
+    </div>
+</div>
+</div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-dark">
