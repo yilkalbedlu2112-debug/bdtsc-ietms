@@ -1,145 +1,92 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-require_once '../includes/db.php';
-require_once '../includes/functions.php'; // ይህ ፋይል log_action()ን ይዟል
-
 header('Content-Type: application/json');
+require_once '../includes/db.php';
+require_once '../includes/functions.php';
 
-// ደህንነት፡ ሱፐርቫይዘር መሆኑን ማረጋገጥ
+// Security Check (BR-01)
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Supervisor') {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
-    exit;
+    exit();
 }
+
+$user_id = $_SESSION['user_id'];
+$dept_id = $_SESSION['dept_id'];
+$response = ['status' => 'error', 'message' => 'Invalid action.'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
-    // ---------------------------------------------------------------
-    // UC-06: Create Task (የማናጀሩ ረዳት ሆኖ ስራ ሲፈጥር)
-    // ---------------------------------------------------------------
-    if ($action === 'create_task') {
-        $title = trim($_POST['title']);
-        $description = trim($_POST['description']);
-        $priority = $_POST['priority'];
-        $deadline = $_POST['deadline'];
-        $dept_id = $_SESSION['dept_id'];
-        $user_id = $_SESSION['user_id'];
+    try {
+        $pdo->beginTransaction();
 
-        // BR-05: Deadline ቫሊዴሽን (ካለፈ ቀን መሆን የለበትም)
-        if (strtotime($deadline) < time()) {
-            echo json_encode(['status' => 'error', 'message' => 'Deadline cannot be in the past.']);
-            exit;
-        }
+        // --- 1. Create New Maintenance Request (UC-06) ---
+        if ($action === 'create_request') {
+            $title = filter_var($_POST['title'], FILTER_SANITIZE_STRING);
+            $desc = filter_var($_POST['description'], FILTER_SANITIZE_STRING);
+            $machine = filter_var($_POST['machine_name'], FILTER_SANITIZE_STRING);
 
-        try {
-            $stmt = $pdo->prepare("INSERT INTO maintenance_requests 
-                (title, description, priority, deadline, dept_id, sender_dept_id, created_by, status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'Pending')");
+            $stmt = $pdo->prepare("INSERT INTO maintenance_requests (machine_name, title, issue_description, dept_id, status, created_by) VALUES (?, ?, ?, ?, 'Pending', ?)");
+            $stmt->execute([$machine, $title, $desc, $dept_id, $user_id]);
             
-            $stmt->execute([$title, $description, $priority, $deadline, $dept_id, $dept_id, $user_id]);
-            $taskId = $pdo->lastInsertId();
-
-            // BR-08: Audit Log መመዝገብ
-            log_action($pdo, $user_id, "Task Creation", "Supervisor created Task ID: $taskId - $title");
-
-            echo json_encode(['status' => 'success', 'message' => 'Task created successfully! Manager will be notified.']);
-        } catch (PDOException $e) {
-            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+            log_action($pdo, $user_id, "Create Request", "Created request for machine: $machine");
+            $response = ['status' => 'success', 'message' => 'ጥያቄው በተሳካ ሁኔታ ተመዝግቧል!'];
         }
-    }
 
-    // ---------------------------------------------------------------
-    // UC-07: Assign Task to Shift Leader (ከኢሜይል ኖቲፊኬሽን ጋር)
-    // ---------------------------------------------------------------
-    if ($action === 'assign_to_shift_leader') {
-        $task_id = $_POST['task_id'];
-        $shift_leader_id = $_POST['shift_leader_id'];
-        $user_id = $_SESSION['user_id'];
+        // --- 2. Assign Task to Employee/Shift Leader (UC-07) ---
+        elseif ($action === 'assign_task') {
+            $request_id = filter_var($_POST['request_id'], FILTER_SANITIZE_NUMBER_INT);
+            $assignee_id = filter_var($_POST['assigned_to'], FILTER_SANITIZE_NUMBER_INT);
+            $deadline = $_POST['deadline'];
 
-        try {
-            // የShift Leader-ኡን መረጃ (ኢሜይል) ማግኘት
-            $stmtUser = $pdo->prepare("SELECT email, full_name FROM users WHERE id = ?");
-            $stmtUser->execute([$shift_leader_id]);
-            $leader = $stmtUser->fetch();
+            // በ 'task' ሰንጠረዥ ላይ ስራውን መመዝገብ
+            $task_stmt = $pdo->prepare("INSERT INTO task (request_id, assigned_to, deadline, status) VALUES (?, ?, ?, 'Assigned')");
+            $task_stmt->execute([$request_id, $assignee_id, $deadline]);
 
-            if (!$leader) {
-                echo json_encode(['status' => 'error', 'message' => 'Shift Leader not found.']);
-                exit;
-            }
+            // የጥያቄውን ሁኔታ ማዘመን (Update status in maintenance_requests)
+            $update_stmt = $pdo->prepare("UPDATE maintenance_requests SET status = 'In Progress' WHERE id = ? AND dept_id = ?");
+            $update_stmt->execute([$request_id, $dept_id]);
 
-            // ታስኩን አሳይን ማድረግ
-            $stmt = $pdo->prepare("UPDATE maintenance_requests SET assigned_to = ?, status = 'Assigned', assigned_at = NOW() WHERE id = ?");
-            $stmt->execute([$shift_leader_id, $task_id]);
+            // ኖቲፊኬሽን መላክ
+            $notif_msg = "አዲስ ስራ ተመድቦልዎታል። መለያ ቁጥር፡ #$request_id";
+            $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'New Task')")->execute([$assignee_id, $notif_msg]);
 
-            // 1. ኢሜይል ኖቲፊኬሽን (ለሽፍት ሊደሩ)
-            $to = $leader['email'];
-            $subject = "New Task Assigned - BDTSC Maintenance System";
-            $message = "
-                <h3>Hello " . htmlspecialchars($leader['full_name']) . ",</h3>
-                <p>A new task (ID: #$task_id) has been assigned to you by your Supervisor.</p>
-                <p>Please login to your dashboard to view the details and assign it to an employee.</p>
-                <br>
-                <p>Regards,<br>BDTSC IETMS System</p>
-            ";
+            log_action($pdo, $user_id, "Assign Task", "Assigned Task #$request_id to User ID: $assignee_id");
+            $response = ['status' => 'success', 'message' => 'ስራው ለባለሙያው ተመድቧል!'];
+        }
+
+        // --- 3. Generate & Send Performance Report to Manager ---
+        elseif ($action === 'send_report') {
+            $period = $_POST['period']; // 'weekly' or 'monthly'
+            $days = ($period === 'weekly') ? 7 : 30;
+
+            // JOIN Query: የጥያቄዎችን እና የተሰሩ ስራዎችን ሁኔታ ማጠቃለል
+            $sql = "SELECT COUNT(t.id) as total_tasks, 
+                           SUM(CASE WHEN t.status = 'Completed' THEN 1 ELSE 0 END) as completed,
+                           SUM(CASE WHEN t.deadline < NOW() AND t.status != 'Completed' THEN 1 ELSE 0 END) as delayed
+                    FROM task t
+                    JOIN maintenance_requests mr ON t.request_id = mr.id
+                    WHERE mr.dept_id = ? AND mr.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)";
             
-            // የኢሜይል ፋንክሽኑን መጥራት (functions.php ውስጥ መኖሩን ያረጋግጡ)
-            // send_email($to, $subject, $message); 
+            $report_stmt = $pdo->prepare($sql);
+            $report_stmt->execute([$dept_id, $days]);
+            $data = $report_stmt->fetch();
 
-            // 2. ሲስተም ኖቲፊኬሽን (Database)
-            $notif = $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'Assignment')");
-            $notif->execute([$shift_leader_id, "New task ID #$task_id assigned to you."]);
+            $msg = "የ$period ሪፖርት ማጠቃለያ ለዲፓርትመንት $dept_id: ጠቅላላ ስራዎች: {$data['total_tasks']}, የተጠናቀቁ: {$data['completed']}, የዘገዩ: {$data['delayed']}";
 
-            // 3. Audit Log
-            log_action($pdo, $user_id, "Task Assignment", "Assigned Task #$task_id to Shift Leader: " . $leader['full_name']);
+            // ለManager ኖቲፊኬሽን መላክ
+            $send_notif = $pdo->prepare("INSERT INTO notifications (user_role, dept_id, message, type) VALUES ('Manager', ?, ?, 'Performance Report')");
+            $send_notif->execute([$dept_id, $msg]);
 
-            echo json_encode(['status' => 'success', 'message' => 'Task assigned. Notification and Email sent to Shift Leader!']);
-        } catch (PDOException $e) {
-            echo json_encode(['status' => 'error', 'message' => 'Assignment failed: ' . $e->getMessage()]);
-        }
-    }
-
-    // ---------------------------------------------------------------
-    // Submit Alert to Shift Leader
-    // ---------------------------------------------------------------
-    if ($action === 'submit_alert') {
-        $machine_name = trim($_POST['machine_name']);
-        $issue_description = trim($_POST['issue_description']);
-        $priority = $_POST['priority'];
-        $dept_id = $_SESSION['dept_id'];
-        $user_id = $_SESSION['user_id'];
-
-        if (empty($machine_name) || empty($issue_description)) {
-            echo json_encode(['status' => 'error', 'message' => 'Machine name and issue description are required.']);
-            exit;
+            log_action($pdo, $user_id, "Send Report", "Sent $period performance report to manager");
+            $response = ['status' => 'success', 'message' => 'ሪፖርቱ ለማናጀሩ ተልኳል!'];
         }
 
-        try {
-            // Find Shift Leader for the department
-            $stmt = $pdo->prepare("SELECT id, full_name, email FROM users WHERE dept_id = ? AND user_role = 'Shift Leader' LIMIT 1");
-            $stmt->execute([$dept_id]);
-            $shift_leader = $stmt->fetch();
-
-            if (!$shift_leader) {
-                echo json_encode(['status' => 'error', 'message' => 'No Shift Leader found for this department.']);
-                exit;
-            }
-
-            // Insert alert
-            $stmt = $pdo->prepare("INSERT INTO maintenance_requests 
-                (task_type, user_id, dept_id, assigned_to, machine_name, issue_description, priority, status, sender_dept_id, request_type, is_read_by_receiver) 
-                VALUES ('Alert', ?, ?, ?, ?, ?, ?, 'Pending Approval', ?, 'Maintenance', 0)");
-            
-            $stmt->execute([$user_id, $dept_id, $shift_leader['id'], $machine_name, $issue_description, $priority, $dept_id]);
-
-            $alertId = $pdo->lastInsertId();
-
-            // Audit Log
-            log_action($pdo, $user_id, "Alert Submission", "Supervisor submitted alert #$alertId to Shift Leader: " . $shift_leader['full_name']);
-
-            echo json_encode(['status' => 'success', 'message' => 'Alert submitted successfully to Shift Leader.']);
-        } catch (PDOException $e) {
-            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
-        }
+        $pdo->commit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        $response = ['status' => 'error', 'message' => 'ስህተት፡ ' . $e->getMessage()];
     }
 }
-?>
+
+echo json_encode($response);

@@ -63,15 +63,7 @@ include '../includes/header_glass.php';
             </h2>
             <p class="text-muted mb-0">Chronological activity feed & accountability logs (Immutable)</p>
         </div>
-        <div class="col-12 col-lg-6 text-lg-end mt-3 mt-lg-0">
-    <a href="generate_pdf.php?type=reports" class="btn btn-outline-danger rounded-pill px-4 me-2">
-        <i class="bi bi-file-earmark-pdf me-2"></i>PDF አውርድ
-    </a>
-
-    <a href="export_excel.php?type=reports" class="btn btn-primary rounded-pill px-4">
-        <i class="bi bi-file-earmark-excel me-2"></i>Excel ኤክስፖርት
-    </a>
-</div>
+       
     </div>
 
     <!-- Audit Logs Table -->

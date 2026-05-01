@@ -378,7 +378,9 @@ $image_path = $base_url . "/assets/images/" . $profile_pic;
                 <!--Supervisor has some overlapping links with employee but not all, so we check role again for those specific links-->
             <?php elseif ($user_role === 'Supervisor'): ?>
                 <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">  <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?> </a>
-                <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"> <i class="bi bi-send-check"></i> Create New Task </a>
+                <a href="<?php echo $base_url; ?>/supervisor/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"> <i class="bi bi-send-check"></i> Create New Task </a>
+                <a href="<?php echo $base_url; ?>/supervisor/assign_task.php" class="<?php echo $current_page == 'assign_task.php' ? 'active' : ''; ?>"> <i class="bi bi-person-plus"></i> Assign Task </a>
+                <a href="<?php echo $base_url; ?>/supervisor/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"> <i class="bi bi-file-earmark-plus"></i> Submit Report </a>
             
 
                 <!--Employee is the default role, so we show basic links if no other role matches-->

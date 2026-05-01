@@ -11,12 +11,28 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Supervisor') {
 $dept_name = $_SESSION['dept_name'];
 $dept_id = $_SESSION['dept_id'];
 
-// የምርት ክፍሎችን መለየት (Production Departments Only)
+// የምርት ክፍሎችን እና እንጅነሪንግን ለማረጋገጥ
 $production_group = ['Spinning Department', 'Weaving Department', 'Processing Department', 'Garment Department'];
 
-if (!in_array($dept_name, $production_group)) {
+if (!in_array($dept_name, $production_group, true)) {
     die("<div class='alert alert-danger'>Access Denied: This dashboard is only for Production Supervisors.</div>");
 }
+
+$report_logs_stmt = $pdo->prepare("SELECT action, details, created_at FROM audit_logs WHERE user_id = ? AND action = 'Generate Report' ORDER BY created_at DESC LIMIT 5");
+$report_logs_stmt->execute([$_SESSION['user_id']]);
+$report_logs = $report_logs_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$manager_tasks_stmt = $pdo->prepare(
+    "SELECT mr.*, u.full_name AS assigned_to_name, d.dept_name AS source_dept
+     FROM maintenance_requests mr
+     LEFT JOIN users u ON mr.assigned_to = u.id
+     LEFT JOIN departments d ON mr.sender_dept_id = d.id
+     WHERE mr.receiver_dept_id = ? OR mr.assigned_to = ?
+     ORDER BY mr.created_at DESC"
+);
+$manager_tasks_stmt->execute([$dept_id, $_SESSION['user_id']]);
+$manager_tasks = $manager_tasks_stmt->fetchAll(PDO::FETCH_ASSOC);
+
 include '../includes/header_glass.php';
 ?>
 
@@ -33,11 +49,20 @@ include '../includes/header_glass.php';
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-person-badge"></i> <?php echo $dept_name; ?> Supervisor Panel</h2>
         <div>
-            <button class="btn btn-warning me-2" data-bs-toggle="modal" data-bs-target="#submitAlertModal">
-                <i class="bi bi-exclamation-triangle"></i> Submit Alert
+            <a href="create_task.php" class="btn btn-danger me-2">
+                <i class="bi bi-send-check"></i> Create Task
+            </a>
+            <a href="assign_task.php" class="btn btn-primary me-2">
+                <i class="bi bi-person-plus"></i> Assign Task
+            </a>
+            <a href="submit_report.php" class="btn btn-success me-2">
+                <i class="bi bi-file-earmark-plus"></i> Submit Report
+            </a>
+            <button class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#delegateModal">
+                <i class="bi bi-person-badge"></i> Delegate Authority
             </button>
-            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#createTaskModal">
-                <i class="bi bi-tools"></i> Request Maintenance / Create Task
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#submitAlertModal">
+                <i class="bi bi-exclamation-triangle"></i> Submit Alert
             </button>
         </div>
     </div>
@@ -56,7 +81,7 @@ include '../includes/header_glass.php';
                 <div class="card-body">
                     <h5>Pending Tasks</h5>
                     <?php 
-                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status = 'Pending'");
+                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE receiver_dept_id = ? AND status = 'Pending'");
                         $stmt->execute([$dept_id]);
                         echo "<h3>" . $stmt->fetchColumn() . "</h3>";
                     ?>
@@ -72,6 +97,8 @@ include '../includes/header_glass.php';
             </div>
         </div>
     </div>
+        
+
     <div class="card shadow-sm border-0">
         <div class="card-header bg-white">
             <h5 class="mb-0">Machine / Work Station Tasks</h5>
@@ -81,6 +108,7 @@ include '../includes/header_glass.php';
                 <thead class="table-light">
                     <tr>
                         <th>ID</th>
+                        <th>Source Dept</th>
                         <th>Subject/Machine</th>
                         <th>Priority</th>
                         <th>Status</th>
@@ -90,32 +118,22 @@ include '../includes/header_glass.php';
                 </thead>
                 <tbody>
                     <?php
-                    $stmt = $pdo->prepare("SELECT mr.*, u.full_name as leader_name FROM maintenance_requests mr 
+                    $stmt = $pdo->prepare("SELECT mr.*, d.dept_name AS source_dept, u.full_name as leader_name FROM maintenance_requests mr 
+                                         LEFT JOIN departments d ON mr.sender_dept_id = d.id 
                                          LEFT JOIN users u ON mr.assigned_to = u.id 
-                                         WHERE mr.dept_id = ? ORDER BY mr.created_at DESC");
-                    $stmt->execute([$dept_id]);
+                                         WHERE mr.receiver_dept_id = ? OR mr.dept_id = ?
+                                         ORDER BY mr.created_at DESC");
+                    $stmt->execute([$dept_id, $dept_id]);
                     while($row = $stmt->fetch()):
                     ?>
                     <tr>
                         <td>#<?php echo $row['id']; ?></td>
+                        <td><?php echo $row['source_dept'] ?: '<span class="text-muted">Unknown</span>'; ?></td>
                         <td><strong><?php echo $row['title'] ?: $row['machine_name']; ?></strong></td>
                         <td><span class="badge bg-<?php echo ($row['priority']=='Emergency') ? 'danger' : 'info'; ?>"><?php echo $row['priority']; ?></span></td>
                         <td><span class="badge bg-secondary"><?php echo $row['status']; ?></span></td>
                         <td><?php echo $row['leader_name'] ?: '<span class="text-muted">Not Assigned</span>'; ?></td>
-                        <td>
-    <?php if ($row['status'] == 'Pending'): ?>
-        <button class="btn btn-sm btn-primary" onclick="openAssignModal(<?php echo $row['id']; ?>)">
-            <i class="bi bi-person-plus"></i> Assign to SL
-        </button>
-    <?php endif; ?>
-
-    <form action="alert_shift_leader.php" method="POST" style="display:inline;">
-        <input type="hidden" name="req_id" value="<?php echo $row['id']; ?>">
-        <button type="submit" class="btn btn-sm btn-outline-danger" title="Send Urgent Alert">
-            <i class="bi bi-exclamation-triangle"></i> Alert SL
-        </button>
-    </form>
-</td>
+               
                     </tr>
                     <?php endwhile; ?>
                 </tbody>
@@ -123,40 +141,13 @@ include '../includes/header_glass.php';
         </div>
     </div>
 </div>
-<div class="modal fade" id="createTaskModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form id="createTaskForm">
-            <div class="modal-content">
-                <div class="modal-header"><h5>Create New Task/Request</h5></div>
-                <div class="modal-body">
-                    <input type="hidden" name="action" value="create_task">
-                    <div class="mb-3"><label>Machine/Subject</label><input type="text" name="title" class="form-control" required></div>
-                    <div class="mb-3"><label>Description</label><textarea name="description" class="form-control" required></textarea></div>
-                    <div class="mb-3">
-                        <label>Priority</label>
-                        <select name="priority" class="form-select">
-                            <option value="Normal">Normal</option>
-                            <option value="High">High</option>
-                            <option value="Emergency">Emergency</option>
-                        </select>
-                    </div>
-                    <div class="mb-3"><label>Deadline</label><input type="datetime-local" name="deadline" class="form-control" required></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-danger">Submit to Department</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
 <div class="modal fade" id="submitAlertModal" tabindex="-1">
     <div class="modal-dialog">
         <form id="submitAlertForm">
             <div class="modal-content">
                 <div class="modal-header"><h5>Submit Alert to Shift Leader</h5></div>
                 <div class="modal-body">
-                    <input type="hidden" name="action" value="submit_alert">
+                    <input type="hidden" name="action" value="create_request">
                     <div class="mb-3"><label>Machine Name</label><input type="text" name="machine_name" class="form-control" required></div>
                     <div class="mb-3"><label>Issue Description</label><textarea name="issue_description" class="form-control" required></textarea></div>
                     <div class="mb-3">
@@ -179,29 +170,32 @@ include '../includes/header_glass.php';
     </div>
 </div>
 
-<div class="modal fade" id="assignModal" tabindex="-1">
+<div class="modal fade" id="delegateModal" tabindex="-1">
     <div class="modal-dialog">
-        <form id="assignTaskForm">
+        <form id="delegateForm">
             <div class="modal-content">
-                <div class="modal-header"><h5>Assign to Shift Leader</h5></div>
+                <div class="modal-header"><h5>Delegate Authority to Shift Leader</h5></div>
                 <div class="modal-body">
-                    <input type="hidden" name="action" value="assign_to_shift_leader">
-                    <input type="hidden" name="task_id" id="task_id_field">
+                    <input type="hidden" name="action" value="delegate_authority">
                     <div class="mb-3">
                         <label>Select Shift Leader</label>
-                        <select name="shift_leader_id" class="form-select" required>
+                        <select name="delegate_to" class="form-select" required>
                             <?php
-                            $sls = $pdo->prepare("SELECT id, full_name FROM users WHERE dept_id = ? AND user_role = 'Shift Leader'");
-                            $sls->execute([$dept_id]);
-                            foreach($sls->fetchAll() as $sl) {
-                                echo "<option value='{$sl['id']}'>{$sl['full_name']}</option>";
+                            $delegates = $pdo->prepare("SELECT id, full_name FROM users WHERE dept_id = ? AND user_role = 'Shift Leader'");
+                            $delegates->execute([$dept_id]);
+                            foreach($delegates->fetchAll() as $delegate) {
+                                echo "<option value='{$delegate['id']}'>" . htmlspecialchars($delegate['full_name']) . "</option>";
                             }
                             ?>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label>Delegation Notes</label>
+                        <textarea name="delegation_notes" class="form-control" placeholder="Optional note for the delegate"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Confirm & Send Email</button>
+                    <button type="submit" class="btn btn-info">Delegate Authority</button>
                 </div>
             </div>
         </form>
@@ -211,18 +205,19 @@ include '../includes/header_glass.php';
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function openAssignModal(id) {
-    $('#task_id_field').val(id);
-    var myModal = new bootstrap.Modal(document.getElementById('assignModal'));
-    myModal.show();
-}
-
-// AJAX for Create & Assign & Alert
-$('#createTaskForm, #assignTaskForm, #submitAlertForm').on('submit', function(e){
-    e.preventDefault();
-    $.post('sup_ajax.php', $(this).serialize(), function(res){
+$('#sendDailyReportBtn, #sendWeeklyReportBtn, #sendMonthlyReportBtn').on('click', function() {
+    var id = $(this).attr('id');
+    var period = id === 'sendMonthlyReportBtn' ? 'monthly' : (id === 'sendWeeklyReportBtn' ? 'weekly' : 'daily');
+    $.post('supervisor_controller.php', { action: 'generate_report', period: period }, function(res) {
         alert(res.message);
-        if(res.status === 'success') location.reload();
+    }, 'json');
+});
+
+$('#delegateForm').on('submit', function(e) {
+    e.preventDefault();
+    $.post('supervisor_controller.php', $(this).serialize(), function(res) {
+        alert(res.message);
+        if (res.status === 'success') location.reload();
     }, 'json');
 });
 </script>
