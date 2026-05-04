@@ -372,6 +372,7 @@ $image_path = $base_url . "/assets/images/" . $profile_pic;
                 <!-- Shift leader has some overlapping links with employee but not all, so we check role again for those specific links-->
             <?php elseif ($user_role === 'Shift Leader'): ?>
                 <a href="<?php echo $base_url; ?>/shift_leader/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/shift_leader/approve_task.php" class="<?php echo $current_page == 'approve_task.php' ? 'active' : ''; ?>"><i class="bi bi-check2-square"></i> Review tasks</a>
                 <a href="<?php echo $base_url; ?>/shift_leader/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> <?php echo __('Submit Report'); ?></a>
 
 

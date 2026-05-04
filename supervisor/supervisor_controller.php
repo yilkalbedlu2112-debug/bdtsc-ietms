@@ -121,8 +121,16 @@ try {
         $assignee->execute([$assignee_id]);
         $assignee = $assignee->fetch(PDO::FETCH_ASSOC);
 
-        if (!$assignee || !in_array($assignee['user_role'], ['Shift Leader', 'Technician'], true) || $assignee['dept_id'] !== $dept_id) {
-            respond('error', 'Assignee must be an active Shift Leader or Technician in your production department.');
+        if (!$assignee) {
+            respond('error', 'ተረካቢው በሲስተሙ ውስጥ አልተገኘም።');
+        }
+
+        // ማስተካከያ፡ ተረካቢው የራሱ ዲፓርትመንት ሽፍት ሊደር ወይም ደግሞ የኢንጅነሪንግ ማናጀር መሆኑን ማረጋገጥ
+        $is_my_shift_leader = ($assignee['user_role'] === 'Shift Leader' && intval($assignee['dept_id']) === $dept_id);
+        $is_engineering = ($assignee['user_role'] === 'Engineering Manager');
+
+        if (!$is_my_shift_leader && !$is_engineering) {
+            respond('error', 'ስራ መመደብ የሚችሉት ለዲፓርትመንትዎ ሽፍት ሊደር ወይም ለኢንጅነሪንግ ማናጀር ብቻ ነው።');
         }
 
         $check = $pdo->prepare("SELECT status FROM maintenance_requests WHERE id = ? AND (dept_id = ? OR sender_dept_id = ?)");
@@ -130,29 +138,26 @@ try {
         $request = $check->fetch(PDO::FETCH_ASSOC);
 
         if (!$request) {
-            respond('error', 'Request not found or cannot be assigned.');
+            respond('error', 'ጥያቄው አልተገኘም ወይም የመመደብ ስልጣን የሎትም።');
         }
 
-        if ($request['status'] !== 'Pending') {
-            respond('error', 'Task already assigned or not pending.');
-        }
-
+        // ሁኔታውን ማዘመን
         $update = $pdo->prepare(
-            "UPDATE maintenance_requests
-             SET assigned_to = ?, supervisor_id = ?, status = 'Assigned', assigned_to_dept = 'Internal', assigned_at = NOW(), updated_at = NOW()
+            "UPDATE maintenance_requests 
+             SET assigned_to = ?, supervisor_id = ?, status = 'Assigned', assigned_at = NOW(), updated_at = NOW() 
              WHERE id = ?"
         );
         $update->execute([$assignee_id, $user_id, $request_id]);
 
-        $message = "Task #$request_id has been assigned to you.";
+        // ኖቲፊኬሽን መላክ
+        $message = "አዲስ ስራ ተመድቦልዎታል፡ Request #$request_id";
         $pdo->prepare("INSERT INTO notifications (user_id, dept_id, message, type, created_at) VALUES (?, ?, ?, 'Task Assignment', NOW())")
-            ->execute([$assignee_id, $dept_id, $message]);
+            ->execute([$assignee_id, $assignee['dept_id'], $message]);
 
         log_action($pdo, $user_id, 'Assign Task', "Assigned task #$request_id to user #$assignee_id");
         $pdo->commit();
-        respond('success', 'Task assigned successfully.');
+        respond('success', 'ስራው በተሳካ ሁኔታ ተመድቧል!');
     }
-
     if ($action === 'delegate_authority') {
         $delegate_to = intval($_POST['delegate_to'] ?? 0);
         $delegation_notes = sanitize_text($_POST['delegation_notes'] ?? '');
@@ -183,55 +188,47 @@ try {
     }
 
     if ($action === 'generate_report') {
-        $period = sanitize_text($_POST['period'] ?? 'weekly');
-        if ($period === 'daily') {
-            $days = 1;
-        } elseif ($period === 'monthly') {
-            $days = 30;
-        } else {
-            $days = 7;
-        }
+        // ከፎርሙ የሚመጡ መረጃዎችን መቀበል
+        $period = sanitize_text($_POST['period'] ?? 'daily');
+        $summary_note = sanitize_text($_POST['summary_note'] ?? 'ምንም ተጨማሪ ማብራሪያ አልተሰጠም።');
 
+        // የጊዜ ገደቡን መወሰን
+        $days = ($period === 'monthly') ? 30 : (($period === 'weekly') ? 7 : 1);
+
+        // ለሱፐርቫይዘሩ ዲፓርትመንት ብቻ የጥገና ስታቲስቲክስን ማውጣት
         $report_stmt = $pdo->prepare(
-            "SELECT d.dept_name AS source_dept,
-                    COUNT(mr.id) AS request_count,
-                    COUNT(DISTINCT mr.machine_name) AS machine_count,
-                    SUM(CASE WHEN mr.status = 'Completed' THEN 1 ELSE 0 END) AS completed_count,
-                    SUM(CASE WHEN mr.status IN ('Pending','Assigned','In Progress','Under Repair') THEN 1 ELSE 0 END) AS open_count
+            "SELECT d.dept_name,
+                    COUNT(mr.id) AS total_requests,
+                    SUM(CASE WHEN mr.status = 'Completed' THEN 1 ELSE 0 END) AS completed,
+                    SUM(CASE WHEN mr.status IN ('Pending','Assigned','In Progress','Under Repair') THEN 1 ELSE 0 END) AS active
              FROM maintenance_requests mr
              LEFT JOIN departments d ON mr.sender_dept_id = d.id
-             WHERE mr.sender_dept_id IN (8,9,10,3)
-               AND mr.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
-             GROUP BY mr.sender_dept_id
-             ORDER BY FIELD(mr.sender_dept_id, 8,9,10,3)"
+             WHERE mr.sender_dept_id = ? 
+               AND mr.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)"
         );
-        $report_stmt->execute([$days]);
-        $rows = $report_stmt->fetchAll(PDO::FETCH_ASSOC);
+        $report_stmt->execute([$dept_id, $days]);
+        $data = $report_stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (empty($rows)) {
-            respond('success', 'No requests found for the selected period.', ['report' => []]);
-        }
+        // የሪፖርት መልዕክቱን ማዘጋጀት (ሲስተሙ ያወጣው ዳታ + የሱፐርቫይዘሩ ማስታወሻ)
+        $stats_text = sprintf(
+            "ስራዎች፡ ጠቅላላ (%d), የተጠናቀቁ (%d), ገና ያልተጠናቀቁ (%d)",
+            $data['total_requests'] ?? 0, $data['completed'] ?? 0, $data['active'] ?? 0
+        );
+        
+        $final_summary = "[$period ሪፖርት] " . $stats_text . " | ተጨማሪ ማስታወሻ፡ " . $summary_note;
 
-        $report_lines = [];
-        foreach ($rows as $row) {
-            $report_lines[] = sprintf(
-                "%s: %s requests, %s machines, %s completed, %s open",
-                $row['source_dept'], $row['request_count'], $row['machine_count'], $row['completed_count'], $row['open_count']
-            );
-        }
+        // ሪፖርቱን ለዲፓርትመንት ማናጀሩ በኖቲፊኬሽን መልክ መላክ
+        $notif_stmt = $pdo->prepare("INSERT INTO notifications (user_role, dept_id, message, type, created_at) 
+                                     VALUES ('Department Manager', ?, ?, 'Supervisor Report', NOW())");
+        $notif_stmt->execute([$dept_id, $final_summary]);
 
-        $summary = "General report ({$period}): " . implode(' | ', $report_lines);
-        $pdo->prepare("INSERT INTO notifications (user_role, dept_id, message, type, created_at) VALUES ('Department Manager', ?, ?, 'Supervisor Report', NOW())")
-            ->execute([$dept_id, $summary]);
-
-        log_action($pdo, $user_id, 'Generate Report', "Generated {$period} supervisor report for manager.");
+        // በኦዲት ሎግ ላይ ተግባሩን መመዝገብ
+        log_action($pdo, $user_id, 'Generate Report', "Generated $period report for department manager. Note: $summary_note");
+        
         $pdo->commit();
-        respond('success', 'Report generated and sent to manager.', ['report' => $rows, 'summary' => $summary]);
+        respond('success', 'ሪፖርቱ ለዲፓርትመንት ማናጀርዎ በተሳካ ሁኔታ ተልኳል።', ['summary' => $final_summary]);
     }
-
-    $pdo->commit();
-    respond('error', 'Unknown action.');
 } catch (Exception $e) {
-    $pdo->rollBack();
-    respond('error', 'Server error: ' . $e->getMessage());
+    if ($pdo->inTransaction()) { $pdo->rollBack(); }
+    respond('error', 'An error occurred: ' . $e->getMessage());
 }

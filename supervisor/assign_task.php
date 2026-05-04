@@ -10,139 +10,172 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Supervisor') {
 
 $dept_id = $_SESSION['dept_id'] ?? 0;
 $dept_name = $_SESSION['dept_name'] ?? 'Supervisor';
-$production_group = ['Spinning Department', 'Weaving Department', 'Processing Department', 'Garment Department'];
-if (!in_array($dept_name, $production_group, true)) {
-    die("<div class='alert alert-danger'>Access Denied: This page is only for Production Supervisors.</div>");
-}
 
+// 1. የሚመደቡ (Pending) ስራዎችን መፈለግ
 $pendingTasksStmt = $pdo->prepare(
-    "SELECT id, title, machine_name, issue_description, priority, created_at
-     FROM maintenance_requests
-     WHERE (dept_id = ? OR sender_dept_id = ?) AND status = 'Pending'
+    "SELECT id, title, machine_name, issue_description, priority, created_at 
+     FROM maintenance_requests 
+     WHERE sender_dept_id = ? AND status = 'Pending' 
      ORDER BY created_at DESC"
 );
-$pendingTasksStmt->execute([$dept_id, $dept_id]);
+$pendingTasksStmt->execute([$dept_id]);
 $pendingTasks = $pendingTasksStmt->fetchAll(PDO::FETCH_ASSOC);
 
-$shiftLeadersStmt = $pdo->prepare("SELECT id, full_name FROM users WHERE dept_id = ? AND user_role = 'Shift Leader' AND status = 'Active' ORDER BY full_name");
+// 2. ተቀባዮችን (Receivers) ማዘጋጀት
+// ሀ. የራሱ ዲፓርትመንት ሽፍት ሊደሮች
+$shiftLeadersStmt = $pdo->prepare("SELECT id, full_name, user_role FROM users WHERE dept_id = ? AND user_role = 'Shift Leader' AND status = 'Active'");
 $shiftLeadersStmt->execute([$dept_id]);
-$shiftLeaders = $shiftLeadersStmt->fetchAll(PDO::FETCH_ASSOC);
+$receivers = $shiftLeadersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ለ. የኢንጅነሪንግ ማናጀር (ለጥገና ስራዎች)
+$engStmt = $pdo->prepare("SELECT id, full_name, user_role FROM users WHERE user_role = 'Engineering Manager' AND status = 'Active' LIMIT 1");
+$engStmt->execute();
+$engManager = $engStmt->fetch(PDO::FETCH_ASSOC);
+if ($engManager) { $receivers[] = $engManager; }
+
+// 3. አስቀድሞ የተመደቡ (Assigned) ስራዎችን መፈለግ (ለታችኛው ሰንጠረዥ)
+$assignedTasksStmt = $pdo->prepare(
+    "SELECT r.id, r.title, r.machine_name, u.full_name as assigned_to, r.status, r.priority 
+     FROM maintenance_requests r 
+     LEFT JOIN users u ON r.assigned_to = u.id 
+     WHERE r.sender_dept_id = ? AND r.status != 'Pending' 
+     ORDER BY r.created_at DESC LIMIT 10"
+);
+$assignedTasksStmt->execute([$dept_id]);
+$assignedTasks = $assignedTasksStmt->fetchAll(PDO::FETCH_ASSOC);
 
 include '../includes/header_glass.php';
 ?>
 
 <div class="container-fluid py-4">
+    <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm border-start border-primary border-4">
-                <div>
-                    <h3 class="fw-bold mb-1 text-dark"><i class="bi bi-person-plus text-primary me-2"></i>Assign Pending Task</h3>
-                    <p class="text-muted mb-0 small">Select a pending task and assign it to a shift leader.</p>
-                </div>
-                <div>
-                    <a href="dashboard.php" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
-                </div>
+            <div class="card bg-primary text-white p-3 shadow-sm">
+                <h3 class="mb-0"><i class="bi bi-send-check me-2"></i>Task Assignment Center</h3>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-lg-8">
+        <!-- አዲስ መመደቢያ ፎርም -->
+        <div class="col-lg-7">
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body p-4">
+                <div class="card-header bg-white fw-bold">Assign New Request</div>
+                <div class="card-body">
                     <div id="assignAlert"></div>
-                    <?php if (empty($pendingTasks)): ?>
-                        <div class="alert alert-info">No pending tasks are currently available for assignment.</div>
-                    <?php else: ?>
-                        <form id="assignTaskForm">
-                            <input type="hidden" name="action" value="assign_task">
-                            <input type="hidden" name="request_id" id="selected_task_id" value="">
-                            <div class="mb-3">
-                                <label class="form-label">Select Shift Leader</label>
-                                <select name="shift_leader_id" class="form-select" required>
-                                    <option value="">-- Choose Shift Leader --</option>
-                                    <?php foreach ($shiftLeaders as $leader): ?>
-                                        <option value="<?php echo $leader['id']; ?>"><?php echo htmlspecialchars($leader['full_name']); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead>
+                    <form id="assignTaskForm">
+                        <input type="hidden" name="action" value="assign_task">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">1. Select Recipient (Shift Leader or Engineering)</label>
+                            <select name="assigned_to" class="form-select" required>
+                                <option value="">Choose Who to Assign</option>
+                                <?php foreach ($receivers as $user): ?>
+                                    <option value="<?php echo $user['id']; ?>">
+                                        <?php echo htmlspecialchars($user['full_name'] . " (" . $user['user_role'] . ")"); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">2. Select Pending Task</label>
+                            <div class="table-responsive border rounded" style="max-height: 300px;">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light sticky-top">
                                         <tr>
-                                            <th></th>
-                                            <th>ID</th>
-                                            <th>Title</th>
+                                            <th>Select</th>
+                                            <th>Task/Machine</th>
                                             <th>Priority</th>
-                                            <th>Created</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($pendingTasks as $task): ?>
                                             <tr>
-                                                <td>
-                                                    <input type="radio" name="task_selector" value="<?php echo $task['id']; ?>" class="form-check-input task-radio">
-                                                </td>
-                                                <td>#<?php echo $task['id']; ?></td>
+                                                <td><input type="radio" name="request_id" value="<?php echo $task['id']; ?>" required></td>
                                                 <td><?php echo htmlspecialchars($task['title'] ?: $task['machine_name']); ?></td>
-                                                <td><span class="badge bg-<?php echo ($task['priority'] === 'Emergency' || $task['priority'] === 'High') ? 'danger' : 'secondary'; ?>"><?php echo htmlspecialchars($task['priority']); ?></span></td>
-                                                <td><?php echo date('Y-m-d H:i', strtotime($task['created_at'])); ?></td>
+                                                <td><span class="badge bg-info"><?php echo $task['priority']; ?></span></td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
-                            <div class="mt-4 text-end">
-                                <button type="submit" class="btn btn-primary">Assign Task</button>
-                            </div>
-                        </form>
-                    <?php endif; ?>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Confirm Assignment</button>
+                    </form>
                 </div>
             </div>
         </div>
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm p-4">
-                <h5 class="mb-3">Assign Task Notes</h5>
-                <p class="text-muted">Assignments apply only to tasks with status <strong>Pending</strong>. Once assigned, the task status becomes <strong>Assigned</strong> and the selected shift leader receives a notification.</p>
-                <p class="text-muted">If there are no shift leaders listed, make sure at least one active Shift Leader exists in your department.</p>
+
+        <!-- የተመደቡ ስራዎች ዝርዝር (Assigned Tasks) -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold">Recently Assigned</div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Assigned To</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($assignedTasks as $at): ?>
+                                    <tr>
+                                        <td class="small"><?php echo htmlspecialchars($at['machine_name']); ?></td>
+                                        <td class="small"><?php echo htmlspecialchars($at['assigned_to'] ?: 'Engineering'); ?></td>
+                                        <td><span class="badge bg-success small"><?php echo $at['status']; ?></span></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 $(document).ready(function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const selectedTask = urlParams.get('selected_task');
-    if (selectedTask) {
-        const radio = $('input[name="task_selector"][value="' + selectedTask + '"]');
-        if (radio.length) {
-            radio.prop('checked', true);
-            $('html, body').scrollTop(radio.closest('tr').offset().top - 100);
-        }
-    }
-
     $('#assignTaskForm').on('submit', function(e) {
         e.preventDefault();
-        var selectedTaskId = $('input[name="task_selector"]:checked').val();
-        if (!selectedTaskId) {
-            $('#assignAlert').html('<div class="alert alert-warning">Please select a pending task to assign.</div>');
-            return;
-        }
-        $('#selected_task_id').val(selectedTaskId);
-        $.post('supervisor_controller.php', $(this).serialize(), function(res) {
-            var alertClass = res.status === 'success' ? 'alert-success' : 'alert-danger';
-            $('#assignAlert').html('<div class="alert ' + alertClass + '">' + res.message + '</div>');
-            if (res.status === 'success') {
-                location.reload();
+        
+        // ዳታውን እናዘጋጅ
+        const formData = $(this).serialize();
+        
+        // ቁልፉን ለጊዜው Disable እናድርገው (Double click ለመከላከል)
+        const submitBtn = $(this).find('button[type="submit"]');
+        submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Processing...');
+
+        $.ajax({
+            url: 'supervisor_controller.php',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(res) {
+                if (res.status === 'success') {
+                    // ስኬት ሲሆን አረንጓዴ መልዕክት እናሳይ
+                    $('#assignAlert').html('<div class="alert alert-success">' + res.message + '</div>');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500); // ከ 1.5 ሰከንድ በኋላ ገጹን ያድሰዋል
+                } else {
+                    // ስህተት ሲኖር መልዕክቱን እናሳይ
+                    $('#assignAlert').html('<div class="alert alert-danger">' + res.message + '</div>');
+                    submitBtn.prop('disabled', false).text('Confirm Assignment');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Server Response:", xhr.responseText);
+                $('#assignAlert').html('<div class="alert alert-danger">የሰርቨር ስህተት አጋጥሟል። እባክዎ ኮንሶል (F12) ላይ ይመልከቱ።</div>');
+                submitBtn.prop('disabled', false).text('Confirm Assignment');
             }
-        }, 'json').fail(function() {
-            $('#assignAlert').html('<div class="alert alert-danger">Server error. Please try again.</div>');
         });
     });
 });
 </script>
-
-<?php include '../includes/footer_glass.php'; ?>
