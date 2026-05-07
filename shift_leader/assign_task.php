@@ -53,7 +53,7 @@ function sl_redirect_flash(string $type, string $message = ''): void
     if ($message !== '') {
         $q['msg'] = $message;
     }
-    header('Location: dashboard.php?' . http_build_query($q));
+    header('Location: assign_task_view.php?' . http_build_query($q));
     exit;
 }
 

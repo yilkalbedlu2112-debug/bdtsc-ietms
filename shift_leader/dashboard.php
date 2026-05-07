@@ -1,6 +1,7 @@
 <?php
 /**
- * Shift Leader dashboard: department-aware KPIs, task summary, delegation, notifications.
+ * Shift Leader dashboard: department-aware KPIs, task summary, notifications.
+ * Delegation table removed — use the dedicated "Assign Tasks" page instead.
  */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,6 +24,7 @@ if ($dept_name === '' && $dept_id > 0) {
     $dept_name = (string) ($dn->fetchColumn() ?: '');
 }
 
+// ── Department grouping ─────────────────────────────────────────────
 $production_group = ['Spinning Department', 'Weaving Department', 'Processing Department', 'Garment Department'];
 $technical_quality_group = ['Engineering', 'Quality Assurance'];
 $finance_resource_group = ['Finance Department', 'Procurement / Property'];
@@ -42,26 +44,22 @@ if (in_array($dept_name, $production_group, true)) {
 switch ($dept_ui_profile) {
     case 'production':
         $card_names = ['Active machines', 'Production efficiency'];
-        $table_headers = ['ID', 'Work item', 'Status', 'Priority', 'Assign to operator'];
         break;
     case 'technical':
         $card_names = ['Maintenance requests', 'System uptime'];
-        $table_headers = ['ID', 'Request / task', 'Status', 'Priority', 'Assign to technician'];
         break;
     case 'finance':
         $card_names = ['Inventory status', 'Vouchers'];
-        $table_headers = ['ID', 'Reference', 'Status', 'Priority', 'Assign to staff'];
         break;
     case 'admin':
         $card_names = ['KPI score', 'Case progress'];
-        $table_headers = ['ID', 'Subject', 'Status', 'Priority', 'Assign to owner'];
         break;
     default:
         $card_names = ['Department focus', 'Throughput'];
-        $table_headers = ['ID', 'Title', 'Status', 'Priority', 'Assign to employee'];
         break;
 }
 
+// ── Check table / column existence ──────────────────────────────────
 $hasMrTable = (int) $pdo->query(
     "SELECT COUNT(*) FROM information_schema.TABLES
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'maintenance_requests'"
@@ -72,32 +70,40 @@ $hasTasksDeptCol = (int) $pdo->query(
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'assigned_to_dept'"
 )->fetchColumn() > 0;
 
+// ── Department insight metrics (from maintenance_requests, filtered by dept_id) ──
 $metric_left = '—';
 $metric_right = '—';
 if ($dept_id > 0 && $hasMrTable) {
     try {
         if ($dept_ui_profile === 'production') {
+            // Active machines = distinct machines with non-completed requests in this dept
             $q1 = $pdo->prepare(
                 "SELECT COUNT(DISTINCT NULLIF(TRIM(machine_name), '')) FROM maintenance_requests
                  WHERE dept_id = ? AND status <> 'Completed'"
             );
             $q1->execute([$dept_id]);
-            $metric_left = (string) (int) $q1->fetchColumn();
+            $down_machines = (int) $q1->fetchColumn();
 
+            // Assume a baseline of 30 machines per production dept
+            $total_machines = 30;
+            $active_machines = $total_machines - $down_machines;
+            $metric_left = $active_machines . '/' . $total_machines;
+
+            // Production efficiency: % completed maintenance in last 30 days
             $q2 = $pdo->prepare(
                 "SELECT ROUND(100 * SUM(status = 'Completed') / NULLIF(COUNT(*), 0), 1) AS pct
                  FROM maintenance_requests WHERE dept_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
             );
             $q2->execute([$dept_id]);
             $pct = $q2->fetchColumn();
-            $metric_right = $pct !== null ? $pct . '% (30d)' : '—';
+            $metric_right = $pct !== null ? $pct . '%' : '—';
+
         } elseif ($dept_ui_profile === 'technical') {
             $q1 = $pdo->prepare(
                 "SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status NOT IN ('Completed','Cancelled')"
             );
             $q1->execute([$dept_id]);
-            $open = (int) $q1->fetchColumn();
-            $metric_left = (string) $open;
+            $metric_left = (string) (int) $q1->fetchColumn();
 
             $q2 = $pdo->prepare(
                 "SELECT ROUND(100 * SUM(status = 'Completed') / NULLIF(COUNT(*), 0), 1) FROM maintenance_requests
@@ -106,6 +112,7 @@ if ($dept_id > 0 && $hasMrTable) {
             $q2->execute([$dept_id]);
             $up = $q2->fetchColumn();
             $metric_right = $up !== null ? (string) (float) $up . '% resolved (14d)' : '—';
+
         } elseif ($dept_ui_profile === 'finance') {
             $q1 = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status NOT IN ('Completed')");
             $q1->execute([$dept_id]);
@@ -116,6 +123,7 @@ if ($dept_id > 0 && $hasMrTable) {
             );
             $q2->execute([$dept_id]);
             $metric_right = (string) (int) $q2->fetchColumn() . ' cleared (30d)';
+
         } elseif ($dept_ui_profile === 'admin') {
             if ($hasTasksDeptCol) {
                 $qa = $pdo->prepare(
@@ -154,42 +162,78 @@ if ($dept_id > 0 && $hasMrTable) {
     }
 }
 
-$titleCol = ((int) $pdo->query(
-    "SELECT COUNT(*) FROM information_schema.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'title'"
-)->fetchColumn() > 0) ? 'title' : 'task_title';
-
-$taskStatsSql = "SELECT
-    COALESCE(SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END), 0) AS pending_count,
-    COALESCE(SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END), 0) AS progress_count,
-    COALESCE(SUM(CASE WHEN status = 'Under Review' THEN 1 ELSE 0 END), 0) AS review_count,
-    COALESCE(SUM(CASE WHEN status = 'Grievance' THEN 1 ELSE 0 END), 0) AS grievance_count,
-    COALESCE(SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END), 0) AS completed_count
-    FROM tasks";
-$taskStatsParams = [];
-if ($hasTasksDeptCol && $dept_id > 0) {
-    $taskStatsSql .= ' WHERE assigned_to_dept = ?';
-    $taskStatsParams[] = $dept_id;
-}
-if ($taskStatsParams) {
-    $stats_stmt = $pdo->prepare($taskStatsSql);
-    $stats_stmt->execute($taskStatsParams);
-} else {
-    $stats_stmt = $pdo->query($taskStatsSql);
-}
-$stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: [];
-
-$delegation_tasks = [];
-if ($hasTasksDeptCol && $dept_id > 0) {
-    $delegation_stmt = $pdo->prepare(
-        "SELECT id, `{$titleCol}` AS title, priority, status FROM tasks
-         WHERE assigned_to_dept = ? AND status IN ('Pending','Redo')
-         ORDER BY id DESC"
+// ── Task summary stats (from maintenance_requests — the real task source) ──
+$stats = [
+    'pending_count'   => 0,
+    'assigned_count'  => 0,
+    'progress_count'  => 0,
+    'review_count'    => 0,
+    'completed_count' => 0,
+];
+if ($dept_id > 0) {
+    $stats_stmt = $pdo->prepare(
+        "SELECT
+            COALESCE(SUM(CASE WHEN status IN ('Pending','Pending Approval','Approved') THEN 1 ELSE 0 END), 0) AS pending_count,
+            COALESCE(SUM(CASE WHEN status = 'Assigned' THEN 1 ELSE 0 END), 0) AS assigned_count,
+            COALESCE(SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END), 0) AS progress_count,
+            COALESCE(SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END), 0) AS review_count,
+            COALESCE(SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END), 0) AS completed_count
+         FROM maintenance_requests
+         WHERE sender_dept_id = ? OR receiver_dept_id = ? OR dept_id = ?"
     );
-    $delegation_stmt->execute([$dept_id]);
-    $delegation_tasks = $delegation_stmt->fetchAll();
+    $stats_stmt->execute([$dept_id, $dept_id, $dept_id]);
+    $stats = $stats_stmt->fetch(PDO::FETCH_ASSOC) ?: $stats;
 }
 
+// ── Pending delegation count (maintenance_requests assigned to me + dept pending) ──
+$pending_delegation = 0;
+if ($dept_id > 0) {
+    // Tasks assigned TO this shift leader by supervisor/manager
+    $pd1 = $pdo->prepare(
+        "SELECT COUNT(*) FROM maintenance_requests
+         WHERE assigned_to = ? AND status IN ('Assigned','Pending','Pending Approval','Approved')"
+    );
+    $pd1->execute([$user_id]);
+    $pending_delegation += (int) $pd1->fetchColumn();
+
+    // Unassigned department tasks
+    $pd2 = $pdo->prepare(
+        "SELECT COUNT(*) FROM maintenance_requests
+         WHERE (sender_dept_id = ? OR receiver_dept_id = ?)
+           AND status = 'Pending'
+           AND (assigned_to IS NULL OR assigned_to = 0)"
+    );
+    $pd2->execute([$dept_id, $dept_id]);
+    $pending_delegation += (int) $pd2->fetchColumn();
+
+    // Also add tasks table pending items
+    if ($hasTasksDeptCol) {
+        $pd3 = $pdo->prepare("SELECT COUNT(*) FROM tasks WHERE assigned_to_dept = ? AND status IN ('Pending','Redo')");
+        $pd3->execute([$dept_id]);
+        $pending_delegation += (int) $pd3->fetchColumn();
+    }
+}
+
+// ── Recent assigned tasks from maintenance_requests (last 5) ────────
+$recent_assigned = [];
+if ($dept_id > 0) {
+    $ra = $pdo->prepare(
+        "SELECT mr.id,
+                COALESCE(mr.title, mr.machine_name, 'Untitled') AS title,
+                mr.status, mr.priority,
+                u.full_name AS employee_name
+         FROM maintenance_requests mr
+         LEFT JOIN users u ON mr.assigned_to = u.id
+         WHERE (mr.sender_dept_id = ? OR mr.receiver_dept_id = ?)
+           AND mr.status = 'Assigned'
+         ORDER BY mr.updated_at DESC
+         LIMIT 5"
+    );
+    $ra->execute([$dept_id, $dept_id]);
+    $recent_assigned = $ra->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// ── Notifications ───────────────────────────────────────────────────
 $notifHasIsRead = (int) $pdo->query(
     "SELECT COUNT(*) FROM information_schema.COLUMNS
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications' AND COLUMN_NAME = 'is_read'"
@@ -212,52 +256,38 @@ if ($notifHasIsRead) {
 $notif_stmt->execute([$user_id]);
 $notifications = $notif_stmt->fetchAll();
 
-$employee_options = [];
-if ($dept_id > 0) {
-    $emp_stmt = $pdo->prepare(
-        "SELECT id, full_name FROM users
-         WHERE status = 'Active' AND user_role = 'Employee' AND dept_id = ?
-         ORDER BY full_name"
-    );
-    $emp_stmt->execute([$dept_id]);
-    $employee_options = $emp_stmt->fetchAll();
-}
-
-$flash_ok = isset($_GET['flash']) && $_GET['flash'] === 'success';
-$flash_err = isset($_GET['flash']) && $_GET['flash'] === 'error';
-$flash_msg = isset($_GET['msg']) ? (string) $_GET['msg'] : '';
-
 include __DIR__ . '/../includes/header_glass.php';
 ?>
 
 <div class="container-fluid py-4">
+    <!-- Page Header -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <h1 class="h4 fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>Shift Leader dashboard</h1>
-                    <p class="text-muted mb-0">
-                        <?php echo htmlspecialchars($dept_name !== '' ? $dept_name : 'Department', ENT_QUOTES, 'UTF-8'); ?>
-                        <span class="badge bg-light text-dark ms-1"><?php echo htmlspecialchars($dept_ui_profile, ENT_QUOTES, 'UTF-8'); ?> profile</span>
-                    </p>
+                <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h4 fw-bold mb-1">
+                            <i class="bi bi-speedometer2 text-primary me-2"></i>Shift Leader Dashboard
+                        </h1>
+                        <p class="text-muted mb-0">
+                            <?php echo htmlspecialchars($dept_name !== '' ? $dept_name : 'Department', ENT_QUOTES, 'UTF-8'); ?>
+                            <span class="badge bg-light text-dark ms-1"><?php echo htmlspecialchars($dept_ui_profile, ENT_QUOTES, 'UTF-8'); ?> profile</span>
+                        </p>
+                    </div>
+                    <div class="mt-2 mt-md-0">
+                        <a href="assign_task_view.php" class="btn btn-primary shadow-sm">
+                            <i class="bi bi-person-plus me-1"></i>Assign Tasks
+                            <?php if ($pending_delegation > 0): ?>
+                                <span class="badge bg-danger ms-1"><?php echo $pending_delegation; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <?php if ($flash_ok): ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            Task assigned successfully.
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
-    <?php if ($flash_err && $flash_msg !== ''): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <?php echo htmlspecialchars($flash_msg, ENT_QUOTES, 'UTF-8'); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
-
+    <!-- Department Insight Metrics -->
     <h2 class="h6 text-muted text-uppercase mb-2">Department insights</h2>
     <div class="row g-3 mb-4">
         <div class="col-md-6">
@@ -278,22 +308,24 @@ include __DIR__ . '/../includes/header_glass.php';
         </div>
     </div>
 
+    <!-- Task Status Summary Cards -->
     <h2 class="h6 text-muted text-uppercase mb-2">Task summary</h2>
     <div class="row g-3 mb-4">
         <?php
         $cards = [
-            ['label' => 'Pending', 'key' => 'pending_count', 'color' => 'primary'],
-            ['label' => 'In Progress', 'key' => 'progress_count', 'color' => 'warning'],
-            ['label' => 'Under Review', 'key' => 'review_count', 'color' => 'info'],
-            ['label' => 'Grievance', 'key' => 'grievance_count', 'color' => 'danger'],
-            ['label' => 'Completed', 'key' => 'completed_count', 'color' => 'success'],
+            ['label' => 'Pending',     'key' => 'pending_count',   'color' => 'primary', 'icon' => 'bi-hourglass-split'],
+            ['label' => 'Assigned',    'key' => 'assigned_count',  'color' => 'info',    'icon' => 'bi-person-check'],
+            ['label' => 'In Progress', 'key' => 'progress_count',  'color' => 'warning',  'icon' => 'bi-arrow-repeat'],
+            ['label' => 'Under Review','key' => 'review_count',    'color' => 'secondary','icon' => 'bi-eye'],
+            ['label' => 'Completed',   'key' => 'completed_count', 'color' => 'success',  'icon' => 'bi-check-circle'],
         ];
         foreach ($cards as $c):
             $val = (int) ($stats[$c['key']] ?? 0);
         ?>
         <div class="col-6 col-md-4 col-xl">
             <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
+                <div class="card-body text-center">
+                    <i class="bi <?php echo $c['icon']; ?> text-<?php echo $c['color']; ?> fs-4 mb-1 d-block"></i>
                     <div class="text-muted small"><?php echo htmlspecialchars($c['label'], ENT_QUOTES, 'UTF-8'); ?></div>
                     <div class="fs-3 fw-bold text-<?php echo htmlspecialchars($c['color'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo $val; ?></div>
                 </div>
@@ -302,52 +334,53 @@ include __DIR__ . '/../includes/header_glass.php';
         <?php endforeach; ?>
     </div>
 
+    <!-- Two-column: Recent Assignments + Notifications -->
     <div class="row g-4">
+        <!-- Recent Assignments -->
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold py-3">Delegation — Pending &amp; redo</div>
+                <div class="card-header bg-white fw-semibold py-3 d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-clock-history text-primary me-2"></i>Recently assigned tasks</span>
+                    <a href="assign_task_view.php" class="btn btn-outline-primary btn-sm">
+                        View all <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
                 <div class="card-body p-0">
-                    <?php if (!$hasTasksDeptCol): ?>
-                        <p class="text-warning p-4 mb-0">Delegation requires the <code>tasks.assigned_to_dept</code> column so tasks can be matched to your department.</p>
-                    <?php elseif ($dept_id <= 0): ?>
-                        <p class="text-warning p-4 mb-0">Your profile must have a department (<code>dept_id</code>) to list and assign delegation tasks.</p>
-                    <?php elseif (empty($delegation_tasks)): ?>
-                        <p class="text-muted p-4 mb-0">No tasks in Pending or Redo for your department.</p>
-                    <?php elseif (empty($employee_options)): ?>
-                        <p class="text-warning p-4 mb-0">No employees found in your department. Add users with role Employee.</p>
+                    <?php if (empty($recent_assigned)): ?>
+                        <p class="text-muted p-4 mb-0">No recently assigned tasks.</p>
                     <?php else: ?>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th><?php echo htmlspecialchars($table_headers[0], ENT_QUOTES, 'UTF-8'); ?></th>
-                                    <th><?php echo htmlspecialchars($table_headers[1], ENT_QUOTES, 'UTF-8'); ?></th>
-                                    <th><?php echo htmlspecialchars($table_headers[2], ENT_QUOTES, 'UTF-8'); ?></th>
-                                    <th><?php echo htmlspecialchars($table_headers[3], ENT_QUOTES, 'UTF-8'); ?></th>
-                                    <th style="min-width: 260px;"><?php echo htmlspecialchars($table_headers[4], ENT_QUOTES, 'UTF-8'); ?></th>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Assigned to</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($delegation_tasks as $task): ?>
+                                <?php foreach ($recent_assigned as $ra): ?>
                                 <tr>
-                                    <td><?php echo (int) $task['id']; ?></td>
-                                    <td><?php echo htmlspecialchars((string) ($task['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                    <td><span class="badge bg-secondary"><?php echo htmlspecialchars((string) ($task['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
-                                    <td><?php echo htmlspecialchars((string) ($task['priority'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                    <td>#<?php echo (int) $ra['id']; ?></td>
+                                    <td><?php echo htmlspecialchars((string) ($ra['title'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                     <td>
-                                        <form method="post" action="assign_task.php" class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-end">
-                                            <input type="hidden" name="task_id" value="<?php echo (int) $task['id']; ?>">
-                                            <select name="employee_id" class="form-select form-select-sm" required>
-                                                <option value="">— Employee —</option>
-                                                <?php foreach ($employee_options as $emp): ?>
-                                                    <option value="<?php echo (int) $emp['id']; ?>">
-                                                        <?php echo htmlspecialchars((string) $emp['full_name'], ENT_QUOTES, 'UTF-8'); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                            <button type="submit" class="btn btn-primary btn-sm text-nowrap">Assign</button>
-                                        </form>
+                                        <i class="bi bi-person-fill text-primary me-1"></i>
+                                        <?php echo htmlspecialchars((string) ($ra['employee_name'] ?? 'Unassigned'), ENT_QUOTES, 'UTF-8'); ?>
                                     </td>
+                                    <td>
+                                        <?php
+                                        $pColor = match($ra['priority'] ?? '') {
+                                            'Urgent' => 'danger',
+                                            'High'   => 'warning',
+                                            'Normal' => 'info',
+                                            default  => 'secondary',
+                                        };
+                                        ?>
+                                        <span class="badge bg-<?php echo $pColor; ?>"><?php echo htmlspecialchars((string) ($ra['priority'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </td>
+                                    <td><span class="badge bg-info"><?php echo htmlspecialchars((string) ($ra['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -357,10 +390,12 @@ include __DIR__ . '/../includes/header_glass.php';
                 </div>
             </div>
         </div>
+
+        <!-- Notifications -->
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-primary text-white fw-semibold py-3">
-                    Notifications<?php echo $notifHasIsRead ? ' (unread)' : ''; ?>
+                    <i class="bi bi-bell me-2"></i>Notifications<?php echo $notifHasIsRead ? ' (unread)' : ''; ?>
                 </div>
                 <div class="card-body p-0" style="max-height: 440px; overflow-y: auto;">
                     <?php if (empty($notifications)): ?>

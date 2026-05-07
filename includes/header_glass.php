@@ -9,15 +9,41 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+$user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'] ?? 'Employee';
 $full_name = htmlspecialchars($_SESSION['full_name'] ?? 'User');
-$base_url = '/bdtsc-ietms'; // Adjust if deploying in root
+$base_url = '/bdtsc-ietms'; 
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// --- አዲስ የተጨመረ የፎቶ ዳታ ---
+// --- ፕሮፋይል ፎቶ ---
 $profile_pic = $_SESSION['profile_pic'] ?? 'default_user.jpg';
 $image_path = $base_url . "/assets/images/" . $profile_pic;
+
+// --- አዲስ፡ ለዚህ ሰው የተሰጠ ንቁ ውክልና ካለ መፈለግ ---
+// ይህ ተወካዩ ሲገባ "ውክልና ተሰጥቶሃል" የሚል መልዕክት እንዲያይ ይረዳዋል
+$stmt_check = $pdo->prepare("SELECT d.*, u.full_name as manager_name 
+                             FROM delegations d 
+                             JOIN users u ON d.delegated_by = u.id 
+                             WHERE d.delegated_to = ? AND d.status = 'Active' 
+                             LIMIT 1");
+$stmt_check->execute([$user_id]);
+$my_active_delegation = $stmt_check->fetch();
 ?>
+
+<!-- ከፈለግክ ከዚህ በታች ያለውን Alert በ Navbar ወይም በ Dashboard መጀመሪያ ላይ ማስቀመጥ ትችላለህ -->
+<?php if ($my_active_delegation): ?>
+    <div class="alert alert-warning alert-dismissible fade show mx-4 mt-2 shadow-sm border-0" role="alert" style="border-radius: 10px;">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-shield-lock-fill fs-4 me-3 text-dark"></i>
+            <div>
+                <span class="fw-bold text-dark">Delegation Active:</span> 
+                You are currently acting on behalf of <strong><?php echo htmlspecialchars($my_active_delegation['manager_name']); ?></strong>.
+                <small class="d-block text-muted">Reason: <?php echo htmlspecialchars($my_active_delegation['remark']); ?></small>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
 <!DOCTYPE html>
 <html lang="<?php echo $current_lang; ?>">
 <head>
@@ -298,20 +324,41 @@ $image_path = $base_url . "/assets/images/" . $profile_pic;
                     </span>
                     <?php endif; ?>
                 </a>
+                <a href="<?php echo $base_url; ?>/admin/gm_delegation.php" class="<?php echo $current_page == 'gm_delegation.php' ? 'active' : ''; ?>">
+            <i class="bi bi-shield-shaded"></i> Authority Delegation
+        </a>
 
                 <!--department manager and engineering manager share some links but not all, so we check role again for those specific links-->
-            <?php elseif ($user_role === 'Department Manager'): ?>
-                <a href="<?php echo $base_url; ?>/manager/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">
-                    <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?>
-                </a>
+           <?php elseif ($user_role === 'Department Manager'): ?>
+    <!-- Dashboard -->
+    <a href="<?php echo $base_url; ?>/manager/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">
+        <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?>
+    </a>
+
+    <!-- NEW: Delegation (የተጨመረ) -->
+    <a href="<?php echo $base_url; ?>/manager/delegation.php" class="<?php echo $current_page == 'delegation.php' ? 'active' : ''; ?> position-relative">
+        <i class="bi bi-person-gear"></i> Authority Delegation
+        <?php
+            // ንቁ ውክልና ካለ ትንሽ አረንጓዴ ነጥብ ለማሳየት
+            $check_del = $pdo->prepare("SELECT COUNT(*) FROM delegations WHERE delegated_by = ? AND status = 'Active'");
+            $check_del->execute([$_SESSION['user_id']]);
+            if ($check_del->fetchColumn() > 0):
+        ?>
+            <span class="position-absolute top-50 start-0 translate-middle-y p-1 bg-success border border-light rounded-circle" style="margin-left: -10px;"></span>
+        <?php endif; ?>
+    </a>
+
+    <!-- Create Task -->
     <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>">
         <i class="bi bi-plus-square"></i> Create Task
     </a>
-    <!-- Fix 3: Corrected icon from bi-shield-lock to bi-tools -->
+
+    <!-- Maintenance Log -->
     <a href="<?php echo $base_url; ?>/manager/maintenance_list.php" class="<?php echo $current_page == 'maintenance_list.php' ? 'active' : ''; ?>">
         <i class="bi bi-tools"></i> Maintenance Log
     </a>
-    <!-- Fix 3: Corrected icon from bi-shield-lock to bi-inbox -->
+
+    <!-- Cross-Dept Requests -->
     <a href="<?php echo $base_url; ?>/manager/view_requests.php" class="<?php echo $current_page == 'view_requests.php' ? 'active' : ''; ?> position-relative">
         <i class="bi bi-inbox"></i> Cross-Dept Requests
         <?php
@@ -323,12 +370,18 @@ $image_path = $base_url . "/assets/images/" . $profile_pic;
         <span class="badge rounded-pill bg-danger ms-auto" style="font-size:0.65rem;"><?php echo $notif_dm_count > 9 ? '9+' : $notif_dm_count; ?></span>
         <?php endif; ?>
     </a>
+
+    <!-- Analytics -->
     <a href="<?php echo $base_url; ?>/manager/productivity_analytics.php" class="<?php echo $current_page == 'productivity_analytics.php' ? 'active' : ''; ?>">
         <i class="bi bi-graph-up-arrow"></i> Productivity
     </a>
+
+    <!-- Audit Logs -->
     <a href="<?php echo $base_url; ?>/manager/audit_logs.php" class="<?php echo $current_page == 'audit_logs.php' ? 'active' : ''; ?>">
         <i class="bi bi-shield-check"></i> Audit Logs
     </a>
+
+    <!-- Reports -->
     <a href="<?php echo $base_url; ?>/manager/generate_report.php" class="<?php echo $current_page == 'generate_report.php' ? 'active' : ''; ?>">
         <i class="bi bi-file-earmark-pdf"></i> <?php echo __('reports'); ?>
     </a>
@@ -369,25 +422,24 @@ $image_path = $base_url . "/assets/images/" . $profile_pic;
                 <a href="<?php echo $base_url; ?>/admin/audit_trail.php" class="<?php echo $current_page == 'audit_trail.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'active' : ''; ?>"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
 
-                <!-- Shift leader has some overlapping links with employee but not all, so we check role again for those specific links-->
+                <!-- Shift Leader: Department-scoped task delegation & review -->
             <?php elseif ($user_role === 'Shift Leader'): ?>
                 <a href="<?php echo $base_url; ?>/shift_leader/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
-                <a href="<?php echo $base_url; ?>/shift_leader/approve_task.php" class="<?php echo $current_page == 'approve_task.php' ? 'active' : ''; ?>"><i class="bi bi-check2-square"></i> Review tasks</a>
-                <a href="<?php echo $base_url; ?>/shift_leader/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> <?php echo __('Submit Report'); ?></a>
+                <a href="<?php echo $base_url; ?>/shift_leader/assign_task_view.php" class="<?php echo $current_page == 'assign_task_view.php' ? 'active' : ''; ?>"><i class="bi bi-person-plus"></i> Assign Tasks</a>
+                <a href="<?php echo $base_url; ?>/shift_leader/approve_task.php" class="<?php echo $current_page == 'approve_task.php' ? 'active' : ''; ?>"><i class="bi bi-check2-square"></i> Review Tasks</a>
+                <a href="<?php echo $base_url; ?>/shift_leader/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> Submit Report</a>
 
-
-                <!--Supervisor has some overlapping links with employee but not all, so we check role again for those specific links-->
+                <!-- Supervisor: Oversees Shift Leaders, creates & assigns tasks -->
             <?php elseif ($user_role === 'Supervisor'): ?>
-                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>">  <i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?> </a>
-                <a href="<?php echo $base_url; ?>/supervisor/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"> <i class="bi bi-send-check"></i> Create New Task </a>
-                <a href="<?php echo $base_url; ?>/supervisor/assign_task.php" class="<?php echo $current_page == 'assign_task.php' ? 'active' : ''; ?>"> <i class="bi bi-person-plus"></i> Assign Task </a>
-                <a href="<?php echo $base_url; ?>/supervisor/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"> <i class="bi bi-file-earmark-plus"></i> Submit Report </a>
-            
+                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+                <a href="<?php echo $base_url; ?>/supervisor/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"><i class="bi bi-plus-square"></i> Create Task</a>
+                <a href="<?php echo $base_url; ?>/supervisor/assign_task.php" class="<?php echo $current_page == 'assign_task.php' ? 'active' : ''; ?>"><i class="bi bi-person-plus"></i> Assign Task</a>
+                <a href="<?php echo $base_url; ?>/supervisor/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> Submit Report</a>
 
-                <!--Employee is the default role, so we show basic links if no other role matches-->
-                <?php else: ?>
+                <!-- Employee: Views own tasks, reports production -->
+            <?php else: ?>
                 <a href="<?php echo $base_url; ?>/employee/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
-                <a href="<?php echo $base_url; ?>/employee/report_production.php" class="<?php echo $current_page == 'report_production.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> <?php echo __('Report Production'); ?></a>
+                <a href="<?php echo $base_url; ?>/employee/report_production.php" class="<?php echo $current_page == 'report_production.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> Report Production</a>
             <?php endif; ?>
                 
             <hr class="border-secondary mx-3">
