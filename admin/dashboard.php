@@ -39,8 +39,8 @@ $status_query = $pdo->query("SELECT
 $status_data = $status_query->fetchAll();
 
 $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintenance_requests m JOIN departments d ON m.dept_id = d.id GROUP BY m.dept_id ORDER BY total DESC LIMIT 10")->fetchAll();
-?>
 
+?>
 <div class="row">
     <div class="col-md-12">
         <div class="card glass-card border-0 rounded-4 mb-4" style="background: linear-gradient(135deg, rgba(8, 29, 123, 0.85) 0%, rgba(118,75,162,0.85) 100%); color: white;">

@@ -2,7 +2,7 @@
 session_start();
 require_once '../includes/db.php';
 
-// የደህንነት ማረጋገጫ፡ Deputy General Manager ብቻ እንዲገባ
+// የደህንነት ማረጋገጫ
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Deputy General Manager') {
     header("Location: ../auth/login.php");
     exit();
@@ -10,18 +10,75 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Deputy General
 
 $user_id = $_SESSION['user_id'];
 
-// ንቁ የሆነ ውክልና ካለ መረጃውን ማምጣት (ለማሳያ ያህል)
+// 1. DGM ለሌላ ሰው የሰጠው ንቁ ውክልና ካለ መረጃውን ማምጣት
 $active_del_stmt = $pdo->prepare("SELECT d.*, u.full_name FROM delegations d 
                                  JOIN users u ON d.delegated_to = u.id 
                                  WHERE d.delegated_by = ? AND d.status = 'Active' LIMIT 1");
 $active_del_stmt->execute([$user_id]);
 $current_delegation = $active_del_stmt->fetch();
 
+// 2. ከ General Manager ለዚህ DGM የተሰጠ የውክልና መረጃ (Notification)
+$gm_notif_stmt = $pdo->prepare("SELECT d.*, u.full_name as gm_name FROM delegations d 
+                               JOIN users u ON d.delegated_by = u.id 
+                               WHERE d.delegated_to = ? AND u.user_role = 'General Manager' 
+                               AND d.status = 'Active' LIMIT 1");
+$gm_notif_stmt->execute([$user_id]);
+$gm_delegation_info = $gm_notif_stmt->fetch();
+
 include '../includes/header_glass.php';
 ?>
+<?php
+// ከ GM ለዚህ DGM የተሰጠ 'Active' ውክልና ካለ መፈለግ
+$gm_check = $pdo->prepare("
+    SELECT d.*, u.full_name as gm_name 
+    FROM delegations d 
+    JOIN users u ON d.delegated_by = u.id 
+    WHERE d.delegated_to = ? 
+    AND u.user_role = 'General Manager' 
+    AND d.status = 'Active' 
+    ORDER BY d.created_at DESC LIMIT 1
+");
+$gm_check->execute([$_SESSION['user_id']]);
+$gm_delegation = $gm_check->fetch();
+?>
+
+<?php if ($gm_delegation): ?>
+<div class="container-fluid mt-3">
+    <div class="alert shadow-lg border-0 animate__animated animate__pulse animate__infinite" 
+         style="background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); color: white; border-radius: 15px;">
+        <div class="d-flex align-items-center p-3">
+            <div class="flex-shrink-0">
+                <i class="bi bi-shield-fill-check fs-1 text-warning me-3"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h5 class="mb-1 fw-bold">Acting General Manager Mode Activated</h5>
+                <p class="mb-0 opacity-90">
+                    በዋና ስራ አስኪያጅ <strong><?php echo htmlspecialchars($gm_delegation['gm_name']); ?></strong> ሙሉ ውክልና ተሰጥቶዎታል። 
+                    <br><small class="text-white-50">ማሳሰቢያ፡ <?php echo htmlspecialchars($gm_delegation['remark']); ?></small>
+                </p>
+            </div>
+            <div class="ms-auto text-end">
+                <span class="badge bg-white text-dark rounded-pill px-3">Active Now</span>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="container-fluid py-4">
-    <!-- Header Section -->
+    <?php if ($gm_delegation_info): ?>
+    <div class="alert shadow-sm border-0 mb-4 animate__animated animate__fadeInDown" 
+         style="background: linear-gradient(90deg, #1e3c72, #2a5298); color: white; border-radius: 15px;">
+        <div class="d-flex align-items-center p-2">
+            <i class="bi bi-patch-check-fill text-warning fs-2 me-3"></i>
+            <div>
+                <h6 class="mb-0 fw-bold">General Manager Authority Active</h6>
+                <small class="opacity-75 text-white">Delegated by: <?php echo htmlspecialchars($gm_delegation_info['gm_name']); ?> | Remark: <?php echo htmlspecialchars($gm_delegation_info['remark']); ?></small>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="text-dark fw-bold"><i class="bi bi-eye-fill text-primary me-2"></i>DGM Overwatch</h2>
@@ -29,7 +86,6 @@ include '../includes/header_glass.php';
         </div>
         
         <div class="text-end">
-            <!-- Delegation Button -->
             <button class="btn btn-outline-primary rounded-pill px-4 shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#dgmDelegateModal">
                 <i class="bi bi-person-gear me-2"></i>Delegate Authority
             </button>
@@ -41,17 +97,16 @@ include '../includes/header_glass.php';
         </div>
     </div>
 
-    <!-- Active Delegation Status Alert -->
     <?php if (isset($current_delegation) && $current_delegation): ?>
     <div class="alert bg-primary bg-opacity-10 border-primary text-primary rounded-pill py-2 px-4 mb-4 d-inline-block shadow-sm">
         <i class="bi bi-info-circle-fill me-2"></i>
         Authority currently delegated to: <strong><?php echo htmlspecialchars($current_delegation['full_name']); ?></strong>
         <span class="mx-2">|</span>
         <small class="text-muted"><?php echo htmlspecialchars($current_delegation['remark']); ?></small>
+        <button onclick="cancelDgmDelegation(<?php echo $current_delegation['id']; ?>)" class="btn btn-sm btn-danger rounded-pill ms-3 px-3 py-0 shadow-sm border-0" style="font-size: 0.75rem;">Cancel</button>
     </div>
     <?php endif; ?>
 
-    <!-- Dual-View Tabs -->
     <ul class="nav nav-pills mb-4 gap-2" id="dgmTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active rounded-pill px-4" id="production-tab" data-bs-toggle="pill" data-bs-target="#production-view" type="button" role="tab"><i class="bi bi-graph-up me-2"></i>View A: Production KPIs</button>
@@ -62,7 +117,6 @@ include '../includes/header_glass.php';
     </ul>
 
     <div class="tab-content" id="dgmTabsContent">
-        <!-- View A: Production KPIs -->
         <div class="tab-pane fade show active" id="production-view" role="tabpanel">
             <div class="row g-4 mb-4">
                 <div class="col-12">
@@ -76,7 +130,6 @@ include '../includes/header_glass.php';
             </div>
         </div>
 
-        <!-- View B: Technique Oversight -->
         <div class="tab-pane fade" id="technique-view" role="tabpanel">
             <div class="card glass-card border-0 shadow-sm overflow-hidden">
                 <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
@@ -97,9 +150,7 @@ include '../includes/header_glass.php';
                                 <th class="border-0">Registered</th>
                             </tr>
                         </thead>
-                        <tbody id="liveTasksBody">
-                            <!-- Data injected via AJAX -->
-                        </tbody>
+                        <tbody id="liveTasksBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -107,7 +158,6 @@ include '../includes/header_glass.php';
     </div>
 </div>
 
-<!-- Modal: Delegation (ትክክለኛው የPHP ሎጂክ የተጨመረበት) -->
 <div class="modal fade" id="dgmDelegateModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <form id="dgmDelegateForm">
@@ -116,69 +166,38 @@ include '../includes/header_glass.php';
                     <h5 class="modal-title fw-bold"><i class="bi bi-shield-check me-2"></i>Delegate DGM Authority</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-
                 <div class="modal-body p-4">
                     <input type="hidden" name="action" value="delegate_authority">
-                    
-                    <div class="alert alert-info bg-opacity-10 border-info small mb-4 text-primary">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        እባክዎ ስልጣንዎን በጊዜያዊነት ለማጋራት ከሚከተሉት አራት የፕሮዳክሽን ማናጀሮች አንዱን ይምረጡ።
-                    </div>
-
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary small">Select Production Manager</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-0"><i class="bi bi-person-badge"></i></span>
-                            <select name="delegate_to" class="form-select border-0 bg-light py-2" required>
-    <option value="">-- Select Production Manager --</option>
-    <?php
-    // u.user_role አሁን 'Department Manager' የሚለውን እንዲፈልግ ተደርጓል
-    $sql = "SELECT u.id, u.full_name, d.dept_name 
-            FROM users u 
-            JOIN departments d ON u.dept_id = d.id 
-            WHERE u.user_role = 'Department Manager' 
-            AND (
-                d.dept_name = 'Spinning Department' OR 
-                d.dept_name = 'Weaving Department' OR 
-                d.dept_name = 'Processing Department' OR 
-                d.dept_name = 'Garment Department'
-            ) 
-            ORDER BY u.full_name ASC";
-    
-    $stmt = $pdo->query($sql);
-    $managers = $stmt->fetchAll();
-
-    if (count($managers) > 0) {
-        foreach ($managers as $m) {
-            // "Department" የሚለውን ቃል ለዕይታ ቀንሰን እናሳየው
-            $clean_dept = str_replace(' Department', '', $m['dept_name']);
-            echo "<option value='{$m['id']}'>{$m['full_name']} - ({$clean_dept} Manager)</option>";
-        }
-    } else {
-        // አሁንም ካልመጣ የሚከተሉትን ነጥቦች በዳታቤዝህ አረጋግጥ
-        echo "<option value='' disabled>No 'Department Manager' found in Production.</option>";
-    }
-    ?>
-</select>
-                        </div>
+                        <select name="delegate_to" class="form-select border-0 bg-light py-2" required>
+                            <option value="">-- Select Production Manager --</option>
+                            <?php
+                            $sql = "SELECT u.id, u.full_name, d.dept_name FROM users u JOIN departments d ON u.dept_id = d.id 
+                                    WHERE u.user_role = 'Department Manager' AND d.dept_name IN ('Spinning Department', 'Weaving Department', 'Processing Department', 'Garment Department')
+                                    ORDER BY u.full_name ASC";
+                            $stmt = $pdo->query($sql);
+                            while ($m = $stmt->fetch()) {
+                                $clean_dept = str_replace(' Department', '', $m['dept_name']);
+                                echo "<option value='{$m['id']}'>{$m['full_name']} - ({$clean_dept} Manager)</option>";
+                            }
+                            ?>
+                        </select>
                     </div>
-
                     <div class="mb-3">
                         <label class="form-label fw-bold text-secondary small">Reason for Delegation</label>
-                        <textarea name="delegation_notes" class="form-control border-0 bg-light" rows="3" placeholder="Write the reason or duration here..." required></textarea>
+                        <textarea name="delegation_notes" class="form-control border-0 bg-light" rows="3" required></textarea>
                     </div>
                 </div>
-
                 <div class="modal-footer border-0 p-3">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow">
-                        <i class="bi bi-check-circle me-1"></i> Confirm Delegation
-                    </button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow">Confirm Delegation</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 let kpiChart;
@@ -192,45 +211,12 @@ function initChart() {
         data: {
             labels: ['Spinning', 'Weaving', 'Processing', 'Garment'],
             datasets: [
-                {
-                    label: 'Total Issues',
-                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                    data: [0, 0, 0, 0]
-                },
-                {
-                    label: 'Resolved',
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    data: [0, 0, 0, 0]
-                }
+                { label: 'Total Issues', backgroundColor: 'rgba(54, 162, 235, 0.5)', data: [0, 0, 0, 0] },
+                { label: 'Resolved', backgroundColor: 'rgba(75, 192, 192, 0.6)', data: [0, 0, 0, 0] }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
     });
-}
-
-function playAlertSafely() {
-    let playPromise = alertSound.play();
-    if (playPromise !== undefined) {
-        playPromise.then(_ => {}).catch(error => {
-            console.warn("Audio play prevented:", error.message);
-        });
-    }
-}
-
-function getPriorityBadge(priority) {
-    if(priority === 'Emergency') return '<span class="badge bg-danger rounded-pill px-3 py-1 animate-pulse">Emergency</span>';
-    if(priority === 'High') return '<span class="badge bg-warning text-dark rounded-pill px-3 py-1">High</span>';
-    return `<span class="badge bg-secondary rounded-pill px-3 py-1">${priority}</span>`;
-}
-
-function getStatusBadge(status) {
-    if(status === 'Completed') return '<span class="badge bg-success rounded-pill px-3 py-1">Completed</span>';
-    if(status === 'In-Progress') return '<span class="badge bg-info text-dark rounded-pill px-3 py-1">In Progress</span>';
-    return `<span class="badge bg-light text-dark border rounded-pill px-3 py-1">${status}</span>`;
 }
 
 function fetchLiveOverwatchData() {
@@ -238,77 +224,53 @@ function fetchLiveOverwatchData() {
         .then(res => res.json())
         .then(data => {
             if (!data.success) return;
-
             document.getElementById('lastSync').textContent = data.timestamp;
-
             const alertBadge = document.getElementById('emergencyAlert');
             if(data.emergency_count > 0) {
                 alertBadge.classList.remove('d-none');
                 document.getElementById('emergencyCount').textContent = data.emergency_count;
-                if(data.emergency_count > lastEmergencyCount) {
-                    playAlertSafely();
-                }
-            } else {
-                alertBadge.classList.add('d-none');
-            }
-            lastEmergencyCount = data.emergency_count;
+            } else { alertBadge.classList.add('d-none'); }
 
-            const rTotals = [];
-            const rCompleted = [];
+            const rTotals = []; const rCompleted = [];
             ['Spinning', 'Weaving', 'Processing', 'Garment'].forEach(dept => {
-                if(data.stats[dept]) {
-                    rTotals.push(data.stats[dept].total);
-                    rCompleted.push(data.stats[dept].completed);
-                } else {
-                    rTotals.push(0); rCompleted.push(0);
-                }
+                if(data.stats[dept]) { rTotals.push(data.stats[dept].total); rCompleted.push(data.stats[dept].completed); }
+                else { rTotals.push(0); rCompleted.push(0); }
             });
             kpiChart.data.datasets[0].data = rTotals;
             kpiChart.data.datasets[1].data = rCompleted;
             kpiChart.update();
 
             let tbody = '';
-            if(data.tasks.length === 0) {
-                tbody = '<tr><td colspan="6" class="text-center py-4 text-muted">No live operations.</td></tr>';
-            } else {
-                data.tasks.forEach(task => {
-                    let emergencyRow = (task.priority === 'Emergency' && task.status !== 'Completed') ? 'table-danger fw-bold' : '';
-                    tbody += `
-                        <tr class="${emergencyRow}">
-                            <td>${getPriorityBadge(task.priority)}</td>
-                            <td><i class="bi bi-gear-wide-connected me-2"></i>${task.machine_name}</td>
-                            <td>${task.dept_name}</td>
-                            <td>${task.technician || '<em>Unassigned</em>'}</td>
-                            <td>${getStatusBadge(task.status)}</td>
-                            <td class="small text-muted">${task.created_at}</td>
-                        </tr>`;
-                });
-            }
+            data.tasks.forEach(task => {
+                let pBadge = task.priority === 'Emergency' ? '<span class="badge bg-danger rounded-pill">Emergency</span>' : '<span class="badge bg-secondary rounded-pill">'+task.priority+'</span>';
+                tbody += `<tr><td>${pBadge}</td><td>${task.machine_name}</td><td>${task.dept_name}</td><td>${task.technician || '---'}</td><td>${task.status}</td><td>${task.created_at}</td></tr>`;
+            });
             document.getElementById('liveTasksBody').innerHTML = tbody;
-        })
-        .catch(err => console.error("Sync Error:", err));
+        });
 }
 
-// Delegation Form AJAX (አዲስ የተጨመረ)
+// Delegation Form AJAX (መድረሻው process_delegation.php ተደርጓል)
 document.getElementById('dgmDelegateForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const formData = new FormData(this);
-
-    fetch('dgm_controller.php', {
-        method: 'POST',
-        body: formData
-    })
+    fetch('process_delegation.php', { method: 'POST', body: new FormData(this) })
     .then(res => res.json())
     .then(data => {
-        if(data.status === 'success') {
-            alert("Delegation confirmed!");
-            location.reload();
-        } else {
-            alert("Error: " + data.message);
-        }
+        if(data.success) { alert("Delegation confirmed!"); location.reload(); }
+        else { alert("Error: " + data.message); }
     })
-    .catch(err => alert("System error. Please check dgm_controller.php"));
+    .catch(err => alert("System error. Check process_delegation.php"));
 });
+
+// Cancel Delegation AJAX
+function cancelDgmDelegation(id) {
+    if(!confirm("Reclaim authority?")) return;
+    const fd = new FormData();
+    fd.append('action', 'cancel_delegation');
+    fd.append('delegation_id', id);
+    fetch('process_delegation.php', { method: 'POST', body: fd })
+    .then(res => res.json())
+    .then(data => { if(data.success) location.reload(); });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
@@ -318,14 +280,9 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <style>
-@keyframes pulseRed {
-    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
-}
 .animate-pulse { animation: pulseRed 2s infinite; }
+@keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
 .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border-radius: 20px; }
-.nav-pills .nav-link.active { background-color: var(--bs-primary); box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3); }
 </style>
 
 <?php include '../includes/footer_glass.php'; ?>

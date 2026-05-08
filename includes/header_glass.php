@@ -70,7 +70,7 @@ $my_active_delegation = $stmt_check->fetch();
         height: 100vh;
         overflow-y: auto;
         overflow-x: hidden;
-        background: rgba(15, 23, 42, 0.95);
+        background: rgba(4, 97, 89, 0.95);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -211,7 +211,7 @@ $my_active_delegation = $stmt_check->fetch();
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(9, 32, 30, 0.5);
             z-index: 1049;
         }
 

@@ -85,3 +85,54 @@ $active_delegation = $stmt_active->fetch();
 </div>
 
 <?php include '../includes/footer_glass.php'; ?>
+<script>
+// 1. ውክልና ለመስጠት (Delegation Form Submission)
+document.getElementById('delegationForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('../deputy_gm/process_delegation.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            alert("ስልጣን በውክልና ለምክትል ስራ አስኪያጁ ተላልፏል!");
+            location.reload();
+        } else {
+            alert("ስህተት: " + data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("የሲስተም ስህተት አጋጥሟል። እባክዎ process_delegation.php መኖሩን ያረጋግጡ።");
+    });
+});
+
+// 2. ውክልና ለመሰረዝ (Cancel Delegation Function)
+function cancelDelegation(id) {
+    if(!confirm("እርግጠኛ ነዎት የሰጡትን ውክልና መሰረዝ ይፈልጋሉ?")) return;
+    
+    const fd = new FormData();
+    fd.append('action', 'cancel_delegation');
+    fd.append('delegation_id', id);
+
+    fetch('../deputy_gm/process_delegation.php', {
+        method: 'POST',
+        body: fd
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            location.reload();
+        } else {
+            alert("ውክልናውን መሰረዝ አልተቻለም።");
+        }
+    })
+    .catch(err => {
+        console.error("Error:", err);
+        alert("ግንኙነት ተቋርጧል።");
+    });
+}
+</script>
