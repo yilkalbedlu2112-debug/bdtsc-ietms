@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
+    header("Location: ../auth/login.php");
+    exit();
+}
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 

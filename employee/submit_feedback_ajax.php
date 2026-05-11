@@ -2,7 +2,7 @@
 session_start();
 require_once '../includes/db.php';
 require_once '../includes/functions.php'; // log_action() እዚህ ይገኛል ተብሎ ታስቧል
-
+/** @var PDO $pdo */
 header('Content-Type: application/json');
 
 // 1. Authorization Check

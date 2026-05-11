@@ -2,7 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();

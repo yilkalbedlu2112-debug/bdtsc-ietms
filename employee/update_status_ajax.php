@@ -1,12 +1,15 @@
 <?php
 session_start();
-require_once '../includes/db.php'; // Path ተስተካክሏል
-
+require_once '../includes/db.php';
+require_once '../includes/TaskAction.php';
+require_once '../includes/functions.php';
+/** @var PDO $pdo */
+// ...
+$taskAction = new TaskAction($pdo); // $pdo እዚህ ጋር መግባት አለበት
 header('Content-Type: application/json');
 
-// 1. Authorization Check
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized Access']);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit();
 }
 
@@ -16,72 +19,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_SESSION['user_id'];
 
     if ($task_id && $status) {
-        try {
-            // 2. ስራው ለዚህ ሰራተኛ መሰጠቱን እና አሁን ያለበትን ሁኔታ ማረጋገጥ (Security & Workflow)
-            $stmt = $pdo->prepare("SELECT status FROM maintenance_requests WHERE id = ? AND assigned_to = ?");
-            $stmt->execute([$task_id, $user_id]);
-            $current_task = $stmt->fetch();
+        $taskAction = new TaskAction($pdo);
+        $result = $taskAction->updateStatus($task_id, $status, $user_id);
 
-            if ($current_task) {
-                // BR-04 & BR-05: Workflow Validation - Status Transition Rules
-                $allowed_transitions = [
-                    'Pending' => ['In Progress'],
-                    'In Progress' => ['Blocked', 'Under Review'], // Under Review when completing
-                    'Blocked' => ['In Progress'],
-                    'Under Review' => [], // Cannot change once under review
-                    'Completed' => [] // Cannot change once completed
-                ];
-
-                if (!in_array($status, $allowed_transitions[$current_task['status']] ?? [])) {
-                    echo json_encode(['success' => false, 'message' => 'Invalid status transition from ' . $current_task['status'] . ' to ' . $status]);
-                    exit();
-                }
-
-                // 3. ዳታቤዝ ማዘመን (Update Logic)
-                $sql = "UPDATE maintenance_requests SET status = ? ";
-                $params = [$status, $task_id];
-
-                // UC-11: When marking as Completed, set to Under Review for verification
-                if ($status === 'Under Review') {
-                    $sql = "UPDATE maintenance_requests SET status = 'Under Review', is_verified = 0 ";
-                    $params = [$task_id];
-                    
-                    // Notify Shift Leader
-                    $stmtSL = $pdo->prepare("SELECT id FROM users WHERE dept_id = ? AND user_role = 'Shift Leader' LIMIT 1");
-                    $stmtSL->execute([$current_task['dept_id'] ?? $_SESSION['dept_id']]);
-                    $shift_leader = $stmtSL->fetch();
-                    
-                    if ($shift_leader) {
-                        $notif = $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'verification_pending')");
-                        $notif->execute([$shift_leader['id'], "Task #$task_id submitted for verification by employee."]);
-                    }
-                }
-                
-                $sql .= "WHERE id = ?";
-                $update = $pdo->prepare($sql);
-
-                if ($update->execute($params)) {
-                    // UC-16: Audit Log መመዝገብ (የ log_action ፋንክሽን በ functions.php ውስጥ መኖሩን እርግጠኛ ሁን)
-                    if (function_exists('log_action')) {
-                        $log_status = ($status === 'Completed') ? 'submitted for verification' : $status;
-                        log_action($pdo, $user_id, "Task Update", "Task #$task_id $log_status");
-                    }
-
-                    echo json_encode([
-                        'success' => true, 
-                        'message' => "ሁኔታው ወደ $status ተቀይሯል"
-                    ]);
-                } else {
-                    echo json_encode(['success' => false, 'message' => 'ዳታቤዝ ማዘመን አልተቻለም።']);
-                }
-            } else {
-                echo json_encode(['success' => false, 'message' => 'ስራው አልተገኘም ወይም ለእርስዎ አልተመደበም።']);
-            }
-        } catch (PDOException $e) {
-            echo json_encode(['success' => false, 'message' => 'Server Error: ' . $e->getMessage()]);
+        if ($result['success']) {
+            log_action($pdo, $user_id, "Task Update", "Task #$task_id moved to $status");
         }
+        echo json_encode($result);
         exit();
     }
 }
-
 echo json_encode(['success' => false, 'message' => 'Invalid Request']);

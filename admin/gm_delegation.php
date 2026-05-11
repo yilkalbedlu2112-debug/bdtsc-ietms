@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 // 1. መግቢያ ፈቃድ (GM ብቻ መሆኑን ማረጋገጥ)
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
     header("Location: ../auth/login.php");

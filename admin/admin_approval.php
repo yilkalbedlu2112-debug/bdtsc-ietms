@@ -2,10 +2,17 @@
 session_start();
 require_once '../includes/db.php';
 
-// አስተዳዳሪ መሆኑን ማረጋገጥ
+// 1. የDatabase ክላስን በመጥራት ግንኙነቱን መፍጠር (ለ OOP የግድ ያስፈልጋል)
+$database = new Database();
+$pdo = $database->connect();
+
+// 2. አስተዳዳሪ መሆኑን ማረጋገጥ
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
-    die("Unauthorized access!");
+    header("Location: ../auth/login.php");
+    exit();
 }
+
+// አሁን ከዚህ በታች ያለው ማንኛውም የ $pdo->prepare() ኮድ በትክክል ይሰራል!
 
 include '../includes/header_glass.php';
 

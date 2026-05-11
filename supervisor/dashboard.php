@@ -2,7 +2,7 @@
 // 1. ሴሽን እና ዳታቤዝ መጀመሪያ መሆን አለባቸው
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 // 2. ደህንነት፡ ሱፐርቫይዘር መሆኑን ማረጋገጥ
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Supervisor') {
     header("Location: ../auth/login.php");

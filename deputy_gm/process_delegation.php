@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
+/** @var PDO $pdo */
 header('Content-Type: application/json');
 
 // 1. የደህንነት ማረጋገጫ
@@ -54,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $audit_details = "User (ID: $current_user_id) reclaimed authority. Delegation ID: $delegation_id";
         }
 
+        
         // --- ሐ. ድርጊቱ ከተሳካ ኦዲት ሎግ መመዝገብ ---
         if ($success_flag) {
             $ip = $_SERVER['REMOTE_ADDR'];

@@ -4,6 +4,7 @@ session_start();
 require_once '../includes/db.php';
 require_once '../includes/functions.php'; // log_action() እዚህ መኖሩን እርግጠኛ ሁን
 
+/** @var PDO $pdo */
 // 1. Auth guard
 if (!isset($_SESSION['user_role']) || 
     !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {

@@ -2,7 +2,7 @@
 // የዳታቤዝ ግንኙነት ፋይልህን እዚህ ጋር አካትት (ለምሳሌ db_config.php)
 require_once '../includes/db.php'; 
 session_start();
-
+/** @var PDO $pdo */
 if (isset($_POST['confirm_dispatch'])) {
     // ከሞዳሉ የመጡ ዳታዎችን መቀበል
     $request_id   = $_POST['request_id'];

@@ -3,7 +3,7 @@
 // Full history log of tasks/requests originating FROM this department.
 session_start();
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 // ── Fix 1: Role guard now includes Engineering Manager ─────────────────────
 if (!isset($_SESSION['user_role']) ||
     !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {

@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 // 1. የደህንነት ቼክ
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login.php");
@@ -49,10 +49,10 @@ elseif (in_array($dept_name, $admin_strategy_group)) {
     $theme_color = "dark";
 }
 
-// 3. ዳታ ማምጣት (UC-09: Assigned tasks only)
-$stmt = $pdo->prepare("SELECT id, title, description, deadline, priority, status, created_at, machine_name, issue_description FROM maintenance_requests WHERE assigned_to = ? ORDER BY created_at DESC");
-$stmt->execute([$user_id]);
-$my_tasks = $stmt->fetchAll();
+// 3. ዳታ ማምጣት (OOP Version)
+require_once '../includes/TaskAction.php';
+$taskActionObj = new TaskAction($pdo);
+$my_tasks = $taskActionObj->getMyTasks($user_id);
 
 include '../includes/header_glass.php';
 ?>

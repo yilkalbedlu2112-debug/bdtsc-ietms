@@ -1,52 +1,55 @@
 <?php
+session_start();
 require_once '../includes/db.php';
+require_once '../includes/Department.php'; // አዲሱ ክላስ
 include '../includes/header_glass.php';
 
+/** @var PDO $pdo */
 $message = '';
 $error = '';
 
+// 1. የክላስ Instance መፍጠር
+$deptObj = new Department($pdo);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // ዲፓርትመንት ለመጨመር ወይም ለማዘመን
     if (isset($_POST['add_dept']) || isset($_POST['update_dept'])) {
         $dept_name = trim($_POST['dept_name']);
         $description = trim($_POST['description']);
 
         if (isset($_POST['update_dept'])) {
             $dept_id = (int)$_POST['dept_id'];
-            $stmt = $pdo->prepare("UPDATE departments SET dept_name = ?, description = ? WHERE id = ?");
-            if ($stmt->execute([$dept_name, $description, $dept_id])) {
+            if ($deptObj->update($dept_id, $dept_name, $description)) {
                 $message = 'Department updated successfully.';
-                log_action($pdo, $_SESSION['user_id'], 'Department Update', "Updated department: $dept_name (ID: $dept_id)");
+                Database::log_action($pdo, $_SESSION['user_id'], 'Department Update', "Updated department: $dept_name");
             }
         } else {
-            $stmt = $pdo->prepare("INSERT INTO departments (dept_name, description) VALUES (?, ?)");
-            if ($stmt->execute([$dept_name, $description])) {
+            if ($deptObj->create($dept_name, $description)) {
                 $message = 'Department added successfully.';
-                log_action($pdo, $_SESSION['user_id'], 'Department Add', "Added department: $dept_name");
+                Database::log_action($pdo, $_SESSION['user_id'], 'Department Add', "Added department: $dept_name");
             }
         }
     }
 
+    // ዲፓርትመንት ለማጥፋት
     if (isset($_POST['delete_dept'])) {
         $dept_id = (int)$_POST['dept_id'];
-        $stmt = $pdo->prepare("SELECT dept_name FROM departments WHERE id = ?");
-        $stmt->execute([$dept_id]);
-        $dept = $stmt->fetch();
+        $dept = $deptObj->getById($dept_id);
         if ($dept) {
-            $delete = $pdo->prepare("DELETE FROM departments WHERE id = ?");
-            if ($delete->execute([$dept_id])) {
+            if ($deptObj->delete($dept_id)) {
                 $message = 'Department deleted successfully.';
-                log_action($pdo, $_SESSION['user_id'], 'Department Deletion', "Deleted department: {$dept['dept_name']} (ID: $dept_id)");
+                Database::log_action($pdo, $_SESSION['user_id'], 'Department Deletion', "Deleted department: {$dept['dept_name']}");
             }
         }
     }
 }
 
-$departments = $pdo->query("SELECT * FROM departments ORDER BY id DESC")->fetchAll();
+// 2. ዳታውን ከክላሱ ማግኘት
+$departments = $deptObj->getAll();
+
 $edit_department = null;
 if (isset($_GET['edit_id'])) {
-    $stmt = $pdo->prepare("SELECT * FROM departments WHERE id = ?");
-    $stmt->execute([(int)$_GET['edit_id']]);
-    $edit_department = $stmt->fetch();
+    $edit_department = $deptObj->getById((int)$_GET['edit_id']);
 }
 ?>
 

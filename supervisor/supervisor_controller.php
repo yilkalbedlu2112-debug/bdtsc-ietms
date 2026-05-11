@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 header('Content-Type: application/json');
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
-
+/** @var PDO $pdo */
 $user_id = intval($_SESSION['user_id'] ?? 0);
 $dept_id = intval($_SESSION['dept_id'] ?? 0);
 $dept_name = $_SESSION['dept_name'] ?? null;

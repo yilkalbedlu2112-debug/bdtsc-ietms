@@ -3,6 +3,7 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 require_once '../includes/db.php';
 require_once '../includes/functions.php';
 
+/** @var PDO $pdo */
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Supervisor') {
     header('Location: ../auth/login.php');
     exit();

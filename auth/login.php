@@ -140,18 +140,23 @@
         </div>
         
         <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label small fw-bold text-secondary mb-0">Password / የይለፍ ቃል</label>
-                <a href="forgot_password.php" class="small text-decoration-none fw-bold" style="color: var(--bdtsc-color); font-size: 11px;">Forgot? / ረስተዋል?</a>
-            </div>
-            <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <label class="form-label small fw-bold text-secondary mb-0">Password / የይለፍ ቃል</label>
+        <a href="forgot_password.php" class="small text-decoration-none fw-bold" style="color: var(--bdtsc-color); font-size: 11px;">Forgot? / ረስተዋል?</a>
+    </div>
+    <div class="input-group">
+        <input type="password" name="password" id="password" class="form-control" style="border-right: none;" placeholder="••••••••" required>
+        <span class="input-group-text bg-white" style="border-left: none; border-radius: 0 12px 12px 0; cursor: pointer;" id="togglePassword">
+            <i class="bi bi-eye-slash text-secondary"></i>
+        </span>
+    </div>
+</div>
 
-        <div class="d-grid mb-3">
-            <button type="submit" name="login_btn" class="btn btn-bdtsc">
-                Login / ግባ <i class="bi bi-arrow-right-short ms-1"></i>
-            </button>
-        </div>
+       <div class="d-grid mb-3">
+    <button type="submit" name="login_btn" id="loginBtn" class="btn btn-bdtsc" disabled style="opacity: 0.6; cursor: not-allowed;">
+        Login / ግባ <i class="bi bi-arrow-right-short ms-1"></i>
+    </button>
+</div>
     </form>
 
     <div class="text-center mt-2">
@@ -166,6 +171,36 @@
         </p>
     </div>
 </div>
+<script>
+    const togglePassword = document.querySelector('#togglePassword');
+    const password = document.querySelector('#password');
+
+    togglePassword.addEventListener('click', function (e) {
+        // የአይነቱን መቀያየር (Toggle the type attribute)
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        
+        // የአይን ምልክቱን መቀየር (Toggle the eye / eye-slash icon)
+        this.querySelector('i').classList.toggle('bi-eye');
+        this.querySelector('i').classList.toggle('bi-eye-slash');
+    });
+    // የፓስወርድ ኢንፑቱን እና በተኑን ማግኘት
+    const passwordInput = document.querySelector('input[name="password"]');
+    const loginButton = document.querySelector('#loginBtn');
+
+    passwordInput.addEventListener('input', function() {
+        // የፓስወርዱ ርዝመት ከ 6 በታች ከሆነ በተኑ አይሰራም
+        if (this.value.length >= 6) {
+            loginButton.disabled = false;
+            loginButton.style.opacity = "1";
+            loginButton.style.cursor = "pointer";
+        } else {
+            loginButton.disabled = true;
+            loginButton.style.opacity = "0.6";
+            loginButton.style.cursor = "not-allowed";
+        }
+    });
+</script>
 
 </body>
 </html>

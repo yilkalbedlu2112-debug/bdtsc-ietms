@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db.php';
 
+/** @var PDO $pdo */
 header('Content-Type: application/json');
 
 // 1. Authorization Check

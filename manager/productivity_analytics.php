@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 // 1. Authentication Check
 $allowed_mgr_roles = ['Department Manager', 'Engineering Manager'];
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $allowed_mgr_roles, true)) {

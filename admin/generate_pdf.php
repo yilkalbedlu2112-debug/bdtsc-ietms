@@ -2,6 +2,11 @@
 // 1. መጀመሪያ autoload.php-ን መጥራት (መንገዱ ትክክል መሆኑን አረጋግጥ)
 require_once __DIR__ . '/../vendor/autoload.php';
 
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+/** @var PDO $pdo */
 // mPDF ክላሶችን መጥራት
 use Mpdf\Mpdf;
 use Mpdf\Output\Destination;

@@ -1,93 +1,78 @@
 <?php
+session_start();
 require_once '../includes/db.php';
+require_once '../includes/User.php'; // ክላሱን መጥራት
 include '../includes/header_glass.php';
-
-$message = '';
+/** @var PDO $pdo */
+// 1. አስተዳዳሪ መሆኑን ማረጋገጥ
+if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+$message = ''; 
 $error = '';
+// OOP Instance መፍጠር
+$userObj = new User($pdo);
 
-// --- ማስተካከያ 1: Edit የሚደረገውን ተጠቃሚ መረጃ ማምጣት ---
+// Edit የሚደረገውን ተጠቃሚ መረጃ ማምጣት
 $edit_user = null;
 if (isset($_GET['edit_id'])) {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->execute([(int)$_GET['edit_id']]);
-    $edit_user = $stmt->fetch();
+    $edit_user = $userObj->getUserById((int)$_GET['edit_id']);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // ተጠቃሚ ለመመዝገብ
+    // 1. Add User
     if (isset($_POST['add_user'])) {
-        $full_name = trim($_POST['full_name']);
-        $email = trim($_POST['email']);
-        $user_role = trim($_POST['user_role']);
-        $dept_id = !empty($_POST['dept_id']) ? $_POST['dept_id'] : null;
-        $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-
-        $check = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $check->execute([$email]);
-        if ($check->fetch()) {
-            $error = 'የዚህ ኢሜይል ተጠቃሚ ቀድሞ አለ።';
-        } else {
-            // status በዲፎልት Active እንዲሆን ተጨምሯል
-            $stmt = $pdo->prepare("INSERT INTO users (full_name, email, password, user_role, dept_id, status) VALUES (?, ?, ?, ?, ?, 'Active')");
-            if ($stmt->execute([$full_name, $email, $password, $user_role, $dept_id])) {
-                log_action($pdo, $_SESSION['user_id'], 'User Registration', "Registered new user: $full_name as $user_role");
-                $message = 'User registered successfully.';
-            }
+        $res = $userObj->createUser($_POST['full_name'], $_POST['email'], $_POST['password'], $_POST['user_role'], $_POST['dept_id']);
+        if ($res) {
+            Database::log_action($pdo, $_SESSION['user_id'], 'User Registration', "Registered: {$_POST['full_name']}");
+            $message = 'User registered successfully.';
         }
     }
 
-    // ተጠቃሚ ለማዘመን (Update)
+    // 2. Update User
     if (isset($_POST['update_user'])) {
-        $user_id = (int)$_POST['user_id'];
-        $full_name = trim($_POST['full_name']);
-        $email = trim($_POST['email']);
-        $user_role = trim($_POST['user_role']);
-        $dept_id = !empty($_POST['dept_id']) ? $_POST['dept_id'] : null;
-        $status = $_POST['status']; // Status እንዲቀየር ተጨምሯል
-
-        $stmt = $pdo->prepare("UPDATE users SET full_name = ?, email = ?, user_role = ?, dept_id = ?, status = ? WHERE id = ?");
-        if ($stmt->execute([$full_name, $email, $user_role, $dept_id, $status, $user_id])) {
-            log_action($pdo, $_SESSION['user_id'], 'User Update', "Updated user: $full_name (ID: $user_id)");
+        $res = $userObj->updateUser($_POST['user_id'], $_POST['full_name'], $_POST['email'], $_POST['user_role'], $_POST['dept_id'], $_POST['status']);
+        if ($res) {
+            Database::log_action($pdo, $_SESSION['user_id'], 'User Update', "Updated ID: {$_POST['user_id']}");
             $message = 'User updated successfully.';
-            $edit_user = null; // ከ Update በኋላ ፎርሙን ክሊር ለማድረግ
+            $edit_user = null;
         }
     }
 
-    // --- ማስተካከያ 2: Delete ፈንታ ወደ Inactive መቀየር ---
+    // 3. Toggle Status
     if (isset($_POST['toggle_status'])) {
-        $user_id = (int)$_POST['user_id'];
-        $current_status = $_POST['current_status'];
-        $new_status = ($current_status === 'Active') ? 'Inactive' : 'Active';
-
-        if ($user_id === $_SESSION['user_id']) {
+        $new_status = ($_POST['current_status'] === 'Active') ? 'Inactive' : 'Active';
+        if ((int)$_POST['user_id'] === $_SESSION['user_id']) {
             $error = 'የራስዎን አካውንት መዝጋት አይችሉም።';
         } else {
-            $stmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
-            if ($stmt->execute([$new_status, $user_id])) {
-                log_action($pdo, $_SESSION['user_id'], 'Status Change', "Changed status of ID $user_id to $new_status");
-                $message = "User status changed to $new_status successfully.";
-            }
+            $userObj->toggleStatus($_POST['user_id'], $new_status);
+            Database::log_action($pdo, $_SESSION['user_id'], 'Status Change', "ID {$_POST['user_id']} to $new_status");
+            $message = "Status changed to $new_status.";
         }
     }
 
-    // Password Reset (እንደነበረው)
+    // 4. Password Reset
     if (isset($_POST['reset_password'])) {
-        $user_id = (int)$_POST['user_id'];
-        $temp_password = '123456'; 
-        $password_hash = password_hash($temp_password, PASSWORD_DEFAULT);
-
-        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
-        if ($stmt->execute([$password_hash, $user_id])) {
-            $stmt = $pdo->prepare("SELECT full_name FROM users WHERE id = ?");
-            $stmt->execute([$user_id]);
-            $user = $stmt->fetch();
-            $message = 'Password reset to: ' . htmlspecialchars($temp_password) . ' for ' . htmlspecialchars($user['full_name']);
-            log_action($pdo, $_SESSION['user_id'], 'Password Reset', "Password Reset for {$user['full_name']}");
-        }
+        $userObj->resetPassword($_POST['user_id'], '123456');
+        Database::log_action($pdo, $_SESSION['user_id'], 'Password Reset', "ID: {$_POST['user_id']}");
+        $message = 'Password reset to 123456.';
     }
 }
 
+// መረጃዎችን ለሰንጠረዡ ማዘጋጀት
 $departments = $pdo->query("SELECT * FROM departments ORDER BY dept_name ASC")->fetchAll();
+$users = $userObj->getAllUsersWithDept();
+
+// የተቀረው የ $all_roles እና $role_hierarchy ኮድ እንደነበረ ይቀጥላል...
+
+// Define roles
+$management_roles = ['General Manager', 'Deputy General Manager', 'Engineering Manager', 'Department Manager'];
+$production_roles = ['Shift Leader', 'Supervisor'];
+$technical_roles = ['Technician', 'Electrician', 'Lab Analyst'];
+$finance_roles = ['Accountant', 'Purchaser', 'Store Keeper'];
+$admin_roles = ['Officer', 'Auditor', 'Secretary', 'Clerk'];
+$general_roles = ['Employee'];
 
 // Define comprehensive roles synchronized with dashboard groups
 $all_roles = [

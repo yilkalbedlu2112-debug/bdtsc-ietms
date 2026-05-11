@@ -3,7 +3,7 @@
 // Saves internal core tasks (non-cross-dept) created via the Create Task page.
 session_start();
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 if (!isset($_SESSION['user_role']) ||
     !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {
     header("Location: ../auth/login.php");

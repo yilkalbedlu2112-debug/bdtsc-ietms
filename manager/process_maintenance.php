@@ -5,6 +5,7 @@ session_start();
 
 require_once '../includes/db.php';
 
+/** @var PDO $pdo */
 // ── Auth guard ──────────────────────────────────────────────────────────────
 if (!isset($_SESSION['user_role']) ||
     !in_array($_SESSION['user_role'], ['Department Manager', 'Engineering Manager'], true)) {

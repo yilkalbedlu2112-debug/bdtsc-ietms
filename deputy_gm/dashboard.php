@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 // የደህንነት ማረጋገጫ
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Deputy General Manager') {
     header("Location: ../auth/login.php");

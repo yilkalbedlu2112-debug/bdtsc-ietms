@@ -17,7 +17,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'Shift Le
 }
 
 require_once __DIR__ . '/../includes/db.php';
-
+/** @var PDO $pdo */
 $user_id     = (int) $_SESSION['user_id'];
 $dept_id     = isset($_SESSION['dept_id']) ? (int) $_SESSION['dept_id'] : 0;
 $leader_name = (string) ($_SESSION['full_name'] ?? 'Shift Leader');

@@ -1,7 +1,10 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-require_once '../includes/functions.php'; // log_action() እዚህ ውስጥ መኖሩን እርግጠኛ ሁን
+require_once '../includes/ProductionTask.php'; // የ OOP ክላሱ
+require_once '../includes/functions.php';
+
+/** @var PDO $pdo */
 
 // 1. የገጽታ ጥበቃ (Access Control)
 $allowed_roles = ['Department Manager', 'Engineering Manager', 'Supervisor'];
@@ -14,10 +17,13 @@ if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], $allowed
 $dept_id   = $_SESSION['dept_id'];
 $user_id   = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'];
-$full_name = $_SESSION['full_name'];
 $dept_name = trim($_SESSION['dept_name'] ?? 'Department');
+$full_name = $_SESSION['full_name']; // ይህንን መስመር ጨምር!
 
-// 3. የዲፓርትመንት ምድቦችን ማዘጋጀት (Exact Match)
+// 3. የክላስ Instance መፍጠር
+$taskObj = new ProductionTask($pdo);
+
+// 4. የዲፓርትመንት ምድቦች እና UI Adaptation (ይህ ለ HTML ፎርሙ አስፈላጊ ነው)
 $groups = [
     'production' => ['Spinning Department', 'Weaving Department', 'Processing Department', 'Garment Department'],
     'technical'  => ['Engineering', 'Quality Assurance'],
@@ -25,7 +31,6 @@ $groups = [
     'admin'      => ['General Management', 'Human Resource (HR)', 'Planning', 'Strategy & Innovation', 'System Research & Development', 'Legal Service', 'Audit & Inspection']
 ];
 
-// 4. እንደ ዲፓርትመንቱ አይነት UI መቀያየር (UI Adaptation)
 if (in_array($dept_name, $groups['production'])) {
     $task_label = 'MACHINE / STATION';
     $task_type_options = ['Daily Production', 'Quality Check', 'Maintenance', 'Breakdown'];
@@ -34,75 +39,59 @@ if (in_array($dept_name, $groups['production'])) {
     $task_label = 'ASSET / EQUIPMENT';
     $task_type_options = ['Emergency Repair', 'Preventive Maintenance', 'Lab Analysis', 'Calibration'];
     $roles_filter = "'Technician', 'Electrician', 'Lab Analyst', 'Employee'";
-} elseif (in_array($dept_name, $groups['finance'])) {
-    $task_label = 'TRANSACTION / ITEM REF';
-    $task_type_options = ['Budget Approval', 'Payment Processing', 'Purchase Order', 'Inventory Audit'];
-    $roles_filter = "'Accountant', 'Purchaser', 'Store Keeper', 'Officer'";
 } else {
     $task_label = 'SUBJECT / CASE TITLE';
-    $task_type_options = ['Report Preparation', 'Strategic Planning', 'Legal Review', 'Audit Inspection', 'Staffing/HR'];
+    $task_type_options = ['Report Preparation', 'Strategic Planning', 'Legal Review', 'Audit Inspection'];
     $roles_filter = "'Officer', 'Clerk', 'Secretary', 'Auditor', 'Employee'";
 }
 
-// 5. ፎርሙ ሲላክ የሚሰራ ሎጂክ (Form Submission)
+// 5. ፎርሙ ሲላክ የሚሰራ የ OOP ሎጂክ
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_task'])) {
     $title       = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
     $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING);
     $priority    = $_POST['priority'];
-    $task_type   = $_POST['task_type']; // በ JS የተቀየረው እዚህ ጋር ይመጣል
+    $task_type   = $_POST['task_type'];
     $due_date    = $_POST['due_date'];
     $target_dept = $_POST['receiver_dept_id'] ?? $dept_id;
+    $assigned_to = !empty($_POST['assigned_to']) ? $_POST['assigned_to'] : null;
 
-    // 1. የሁኔታ (Status) እና የተመዳቢ (Assigned To) ሎጂክ ማስተካከያ
+    // የሁኔታ (Status) ውሳኔ
     if ($target_dept != $dept_id) {
-        // ስራው ለሌላ ዲፓርትመንት ከሆነ፡
-        $assigned_to = null; // የሌላ ክፍል ሰራተኛ መመደብ አይቻልም
-        $status      = 'Pending External'; // ሌላኛው ማናጀር እስኪያጸድቀው
+        $status = 'Pending External';
+        $assigned_to = null;
     } else {
-        // ስራው በራስ ዲፓርትመንት ውስጥ ከሆነ፡
-        $assigned_to = !empty($_POST['assigned_to']) ? $_POST['assigned_to'] : null;
-        
-        // ማናጀር ከሆነ ወዲያው ይጸድቃል፣ ሱፐርቫይዘር ከሆነ ግን ማናጀር ማየት አለበት
-        if ($user_role === 'Department Manager' || $user_role === 'Engineering Manager') {
-            $status = ($assigned_to) ? 'Assigned' : 'Approved';
-        } else {
-            $status = 'Pending Approval';
-        }
+        $status = ($user_role === 'Department Manager' || $user_role === 'Engineering Manager') 
+                  ? ($assigned_to ? 'Assigned' : 'Approved') 
+                  : 'Pending Approval';
     }
 
-    // 2. Validation
     if (empty($title) || empty($description) || empty($due_date)) {
         $error = "እባክዎ ሁሉንም አስፈላጊ መረጃዎች ይሙሉ!";
     } else {
         try {
             $pdo->beginTransaction();
 
-            $sql = "INSERT INTO maintenance_requests 
-                    (user_id, dept_id, assigned_to, receiver_dept_id, machine_name, issue_description, priority, status, task_type, due_date, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-            
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$user_id, $dept_id, $assigned_to, $target_dept, $title, $description, $priority, $status, $task_type, $due_date]);
-            
-            $new_task_id = $pdo->lastInsertId();
+            $task_data = [
+                'user_id' => $user_id, 'dept_id' => $dept_id, 'assigned_to' => $assigned_to,
+                'target_dept' => $target_dept, 'title' => $title, 'description' => $description,
+                'priority' => $priority, 'status' => $status, 'task_type' => $task_type, 'due_date' => $due_date
+            ];
 
-            // 3. ኦዲት ሎግ መመዝገብ
-            $log_msg = ($target_dept != $dept_id) ? "Sent Cross-Dept request #$new_task_id to Dept $target_dept" : "Created internal task #$new_task_id";
-            log_action($pdo, $user_id, 'Task Created', $log_msg);
+            if ($taskObj->createTask($task_data)) {
+                $new_id = $pdo->lastInsertId();
+                
+                // ኦዲት ሎግ
+                $log_msg = ($target_dept != $dept_id) ? "Sent Cross-Dept request #$new_id" : "Created internal task #$new_id";
+                log_action($pdo, $user_id, 'Task Created', $log_msg);
 
-            // 4. ማሳወቂያ (Notification) - ለተቀባዩ ማናጀር መላክ
-            $notif_msg = "New " . ($target_dept != $dept_id ? "External " : "") . "Task Request from $dept_name: $title";
-            $notif_sql = "INSERT INTO notifications (user_id, dept_id, role_target, message, type, created_at) 
-                          SELECT id, ?, 'Department Manager', ?, 'task_assignment', NOW() 
-                          FROM users WHERE dept_id = ? AND user_role IN ('Department Manager', 'Engineering Manager') AND status = 'Active'";
-            
-            $notif_stmt = $pdo->prepare($notif_sql);
-            $notif_stmt->execute([$target_dept, $notif_msg, $target_dept]);
+                // ማሳወቂያ መላክ
+                $notif_msg = "New Task Request from $dept_name: $title";
+                $taskObj->sendNotification($target_dept, $notif_msg);
 
-            $pdo->commit();
-            header("Location: dashboard.php?success=1");
-            exit();
-
+                $pdo->commit();
+                header("Location: dashboard.php?success=1");
+                exit();
+            }
         } catch (Exception $e) {
             $pdo->rollBack();
             $error = "ሲስተም ስህተት፡ " . $e->getMessage();
@@ -110,15 +99,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_task'])) {
     }
 }
 
-// 6. ለተመዳቢ ሰራተኞች እና ለዲፓርትመንቶች ዝርዝር ማምጫ
+// 6. ለ HTML ፎርሙ የሚያስፈልጉ ዳታዎች
 $dept_staff = $pdo->prepare("SELECT id, full_name, user_role FROM users WHERE dept_id = ? AND status = 'Active' AND user_role IN ($roles_filter) ORDER BY full_name");
 $dept_staff->execute([$dept_id]);
-
 $all_depts = $pdo->query("SELECT id, dept_name FROM departments ORDER BY dept_name")->fetchAll();
 
 require_once '../includes/header_glass.php';
 ?>
-
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-12">
@@ -157,7 +144,7 @@ require_once '../includes/header_glass.php';
                         <div class="row g-4 mb-4">
                             <div class="col-md-12">
                                 <label class="form-label text-uppercase small fw-bold text-primary">
-                                    <i class="bi bi-share-fill me-1"></i>1. Destination Department
+                                    <i class="bi bi-share-fill me-1"></i> Destination Department
                                 </label>
                                 <select name="receiver_dept_id" class="form-select form-select-lg shadow-sm border-2" id="dept_selector" required>
                                     <option value="<?php echo $dept_id; ?>">Internal - [ <?php echo $dept_name; ?> ]</option>
@@ -177,10 +164,10 @@ require_once '../includes/header_glass.php';
                         <div class="row g-4 mb-4">
                             <div class="col-md-6">
                                 <label class="form-label text-uppercase small fw-bold text-muted">
-                                    <i class="bi bi-grid-3x3-gap-fill text-primary me-1"></i>2. Task Category
+                                    <i class="bi bi-grid-3x3-gap-fill text-primary me-1"></i> Task Category
                                 </label>
                                 <select name="task_type" id="task_type" class="form-select" required>
-                                    <option value="">-- Select Category --</option>
+                                    <option value="">Select Category </option>
                                     <?php foreach ($task_type_options as $option): ?>
                                         <option value="<?php echo htmlspecialchars($option); ?>">
                                             <?php echo htmlspecialchars($option); ?>
@@ -191,7 +178,7 @@ require_once '../includes/header_glass.php';
 
                             <div class="col-md-6">
                                 <label class="form-label text-uppercase small fw-bold text-muted">
-                                    <i class="bi bi-speedometer2 text-danger me-1"></i>3. Priority Level
+                                    <i class="bi bi-speedometer2 text-danger me-1"></i> Priority Level
                                 </label>
                                 <div class="btn-group w-100" role="group">
                                     <input type="radio" class="btn-check" name="priority" id="p_normal" value="Normal" checked>
@@ -208,7 +195,7 @@ require_once '../includes/header_glass.php';
 
                         <div class="mb-4">
                             <label class="form-label text-uppercase small fw-bold text-muted" id="label_title">
-                                <i class="bi bi-pencil-square text-dark me-1"></i>4. <?php echo $task_label; ?>
+                                <i class="bi bi-pencil-square text-dark me-1"></i> <?php echo $task_label; ?>
                             </label>
                             <input type="text" name="title" class="form-control" 
                                    placeholder="እዚህ ጋር ርዕሱን ይጥቀሱ..." required>
@@ -216,7 +203,7 @@ require_once '../includes/header_glass.php';
 
                         <div class="mb-4">
                             <label class="form-label text-uppercase small fw-bold text-muted">
-                                <i class="bi bi-info-circle-fill text-primary me-1"></i>5. Task Details & Instructions
+                                <i class="bi bi-info-circle-fill text-primary me-1"></i> Task Details & Instructions
                             </label>
                             <textarea name="description" class="form-control" rows="4" 
                                       placeholder="ዝርዝር የስራ መመሪያ እዚህ ጋር ይጥቀሱ..." required></textarea>
@@ -225,10 +212,10 @@ require_once '../includes/header_glass.php';
                         <div class="row g-4 mb-5">
                             <div class="col-md-6" id="staff_assign_div">
                                 <label class="form-label text-uppercase small fw-bold text-muted">
-                                    <i class="bi bi-person-plus-fill text-success me-1"></i>6. Assign Staff (Internal)
+                                    <i class="bi bi-person-plus-fill text-success me-1"></i> Assign Staff (Internal)
                                 </label>
                                 <select name="assigned_to" id="assigned_to" class="form-select">
-                                    <option value="">-- Keep Unassigned --</option>
+                                    <option value="">Keep Unassigned</option>
                                     <?php foreach ($dept_staff as $staff): ?>
                                         <option value="<?php echo $staff['id']; ?>">
                                             <?php echo htmlspecialchars($staff['full_name']) . " (" . $staff['user_role'] . ")"; ?>
@@ -239,7 +226,7 @@ require_once '../includes/header_glass.php';
 
                             <div class="col-md-6">
                                 <label class="form-label text-uppercase small fw-bold text-muted">
-                                    <i class="bi bi-calendar-check text-danger me-1"></i>7. Target Deadline
+                                    <i class="bi bi-calendar-check text-danger me-1"></i> Target Deadline
                                 </label>
                                 <input type="datetime-local" name="due_date" id="due_date" class="form-control" required>
                             </div>
