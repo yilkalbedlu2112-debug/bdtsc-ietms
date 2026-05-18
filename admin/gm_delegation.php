@@ -35,7 +35,7 @@ $active_delegation = $stmt_active->fetch();
                         <div class="mb-4">
                             <label class="form-label fw-bold">Select Deputy General Manager</label>
                             <select name="delegate_to" class="form-select form-select-lg border-0 bg-light" required>
-                                <option value="">-- Select Deputy --</option>
+                                <option value=""> Select Deputy</option>
                                 <?php
                                 // Deputy General Manager የሚል ሮል ያላቸውን ብቻ ያመጣል
                                 $sql = "SELECT id, full_name, user_role FROM users 

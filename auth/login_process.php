@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once '../includes/db.php';
 // log_action ፋንክሽን ያለበትን ፋይል መጥራት እንዳትረሳ (ለምሳሌ functions.php)
 
+/** @var PDO $pdo */
 if (isset($_POST['login_btn'])) {
     $email = trim($_POST['email']);
     $password = $_POST['password'];

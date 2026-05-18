@@ -64,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $departments = $pdo->query("SELECT * FROM departments ORDER BY dept_name ASC")->fetchAll();
 $users = $userObj->getAllUsersWithDept();
 
-// የተቀረው የ $all_roles እና $role_hierarchy ኮድ እንደነበረ ይቀጥላል...
 
 // Define roles
 $management_roles = ['General Manager', 'Deputy General Manager', 'Engineering Manager', 'Department Manager'];

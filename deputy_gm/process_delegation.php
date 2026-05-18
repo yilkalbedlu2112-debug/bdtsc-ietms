@@ -58,14 +58,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // --- ሐ. ድርጊቱ ከተሳካ ኦዲት ሎግ መመዝገብ ---
         if ($success_flag) {
-            $ip = $_SERVER['REMOTE_ADDR'];
-            $log_stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)");
-            $log_stmt->execute([$current_user_id, $audit_action, $audit_details, $ip]);
+    // 1. የኦዲት መረጃዎችን እዚህ ጋር ማዘጋጀት
+    $audit_action = "Delegation Processed"; 
+    $audit_details = "Deputy GM delegated task to a new assignee.";
+    
+    // 2. ቀደም ሲል የሰራኸውን log_action ፋንክሽን ተጠቀም
+    // ይህ ፋንክሽን በውስጡ IP አድራሻውን እና የ SQL INSERT ስራውን ይይዛል
+    if (function_exists('log_action')) {
+        log_action($pdo, $current_user_id, $audit_action, $audit_details);
+    }
 
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Operation failed']);
-        }
+    echo json_encode(['success' => true]);
+} else {
+    echo json_encode(['success' => false, 'message' => 'Operation failed']);
+}
 
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
