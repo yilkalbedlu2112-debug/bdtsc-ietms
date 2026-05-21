@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['task_id'])) {
 
     try {
         // 2. Fetch task details ensuring it belongs to the logged-in user
-        $stmt = $pdo->prepare("SELECT id, title, description, deadline, priority, status, created_at, machine_name, issue_description, feedback, completion_notes FROM maintenance_requests WHERE id = ? AND assigned_to = ?");
+        $stmt = $pdo->prepare("SELECT id, title, description, deadline, priority, status, is_verified, feedback, completion_notes, updated_at, created_at, machine_name, issue_description FROM maintenance_requests WHERE id = ? AND assigned_to = ?");
         $stmt->execute([$task_id, $user_id]);
         $task = $stmt->fetch(PDO::FETCH_ASSOC);
 

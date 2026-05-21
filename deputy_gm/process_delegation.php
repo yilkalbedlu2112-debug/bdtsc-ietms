@@ -58,20 +58,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // --- ሐ. ድርጊቱ ከተሳካ ኦዲት ሎግ መመዝገብ ---
         if ($success_flag) {
-    // 1. የኦዲት መረጃዎችን እዚህ ጋር ማዘጋጀት
-    $audit_action = "Delegation Processed"; 
-    $audit_details = "Deputy GM delegated task to a new assignee.";
-    
-    // 2. ቀደም ሲል የሰራኸውን log_action ፋንክሽን ተጠቀም
-    // ይህ ፋንክሽን በውስጡ IP አድራሻውን እና የ SQL INSERT ስራውን ይይዛል
-    if (function_exists('log_action')) {
-        log_action($pdo, $current_user_id, $audit_action, $audit_details);
-    }
+            // Use precise action codes
+            if ($action === 'delegate_authority') {
+                $code = 'AUTHORITY_DELEGATED';
+                $details = sprintf('delegated_by=%d; delegated_to=%s; note=%s', $current_user_id, $delegate_to, substr($remark,0,200));
+            } else {
+                $code = 'AUTHORITY_DELEGATION_CANCELLED';
+                $details = sprintf('delegation_id=%s; reclaimed_by=%d', $delegation_id ?? 'unknown', $current_user_id);
+            }
 
-    echo json_encode(['success' => true]);
-} else {
-    echo json_encode(['success' => false, 'message' => 'Operation failed']);
-}
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $current_user_id, $code, $details);
+            } else if (function_exists('log_action')) {
+                log_action($pdo, $current_user_id, $code, $details);
+            }
+
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Operation failed']);
+        }
 
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

@@ -132,16 +132,21 @@ try {
     }
 
     if ($high_workload) {
-        log_action(
-            $pdo,
-            $shift_leader_id,
-            'High Workload',
-            "Alert: Employee {$employee_name} (ID {$employee_id}) had {$current_load} active task(s) before assignment of task #{$task_id}."
-        );
+        $details = sprintf('employee_id=%d; current_load=%d; task_id=%d; by=%d', $employee_id, $current_load, $task_id, $shift_leader_id);
+        if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+            Database::log_system_activity($pdo, $shift_leader_id, 'HIGH_WORKLOAD', $details);
+        } else {
+            log_action($pdo, $shift_leader_id, 'High Workload', "Alert: Employee {$employee_name} (ID {$employee_id}) had {$current_load} active task(s) before assignment of task #{$task_id}.");
+        }
     }
 
-    $delegation_log = 'Shift Leader ' . $shift_leader_name . ' delegated Task #' . $task_id . ' to Employee ' . $employee_name;
-    log_action($pdo, $shift_leader_id, 'TASK_ASSIGNMENT', $delegation_log);
+    $details = sprintf('task_id=%d; old_assigned_to=%s; new_assigned_to=%d; by=%d', $task_id, $taskRow['assigned_to'] ?? 'null', $employee_id, $shift_leader_id);
+    if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+        Database::log_system_activity($pdo, $shift_leader_id, 'TASK_ASSIGNED', $details);
+    } else {
+        $delegation_log = 'Shift Leader ' . $shift_leader_name . ' delegated Task #' . $task_id . ' to Employee ' . $employee_name;
+        log_action($pdo, $shift_leader_id, 'TASK_ASSIGNMENT', $delegation_log);
+    }
 
     $pdo->commit();
     sl_redirect_flash('success');

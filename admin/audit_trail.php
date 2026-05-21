@@ -1,7 +1,7 @@
 <?php 
 require_once '../includes/db.php';
 session_start();
-
+/** @var PDO $pdo */
 // ሴኩሪቲ ቼክ
 if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['General Manager', 'Admin', 'Deputy General Manager'])) {
     header("Location: ../auth/login.php");
@@ -10,27 +10,57 @@ if (!isset($_SESSION['user_role']) || !in_array($_SESSION['user_role'], ['Genera
 
 include '../includes/header_glass.php';
 
-// 1. የጊዜ ገደብ መፈለጊያ (Date Filter) Logic
+// 1. Filters and Pagination
 $start_date = $_GET['start_date'] ?? '';
 $end_date = $_GET['end_date'] ?? '';
+$action_filter = $_GET['action'] ?? '';
+$user_filter = $_GET['user_id'] ?? '';
 
-$query_str = "SELECT l.*, u.full_name, u.user_role 
-              FROM audit_logs l 
-              LEFT JOIN users u ON l.user_id = u.id";
+$perPage = 25;
+$page = max(1, intval($_GET['page'] ?? 1));
+$offset = ($page - 1) * $perPage;
+
+$where = [];
+$params = [];
 
 if (!empty($start_date) && !empty($end_date)) {
-    $query_str .= " WHERE DATE(l.created_at) BETWEEN :start AND :end";
+    $where[] = "DATE(l.created_at) BETWEEN :start AND :end";
+    $params['start'] = $start_date;
+    $params['end'] = $end_date;
+}
+if (!empty($action_filter)) {
+    $where[] = "l.action = :action";
+    $params['action'] = $action_filter;
+}
+if (!empty($user_filter)) {
+    $where[] = "l.user_id = :user_id";
+    $params['user_id'] = $user_filter;
 }
 
-$query_str .= " ORDER BY l.created_at DESC";
+$where_sql = '';
+if (count($where) > 0) {
+    $where_sql = ' WHERE ' . implode(' AND ', $where);
+}
 
+$count_sql = "SELECT COUNT(*) FROM audit_logs l" . $where_sql;
+$count_stmt = $pdo->prepare($count_sql);
+$count_stmt->execute($params);
+$totalRows = (int) $count_stmt->fetchColumn();
+$totalPages = (int) ceil($totalRows / $perPage);
+
+$query_str = "SELECT l.*, u.full_name, u.user_role FROM audit_logs l LEFT JOIN users u ON l.user_id = u.id" . $where_sql . " ORDER BY l.created_at DESC LIMIT :limit OFFSET :offset";
 $stmt = $pdo->prepare($query_str);
-if (!empty($start_date) && !empty($end_date)) {
-    $stmt->execute(['start' => $start_date, 'end' => $end_date]);
-} else {
-    $stmt->execute();
+foreach ($params as $k => $v) {
+    $stmt->bindValue(':' . $k, $v);
 }
+$stmt->bindValue(':limit', (int)$perPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+$stmt->execute();
 $logs = $stmt->fetchAll();
+
+// Load users for the filter dropdown
+$usersStmt = $pdo->query("SELECT id, full_name FROM users ORDER BY full_name");
+$users = $usersStmt->fetchAll();
 
 // የአክሽን ከለር ፈንክሽን
 function getActionBadge($action) {
@@ -74,6 +104,26 @@ function getActionBadge($action) {
             <div class="col-md-3">
                 <label class="form-label small fw-bold text-muted">To Date</label>
                 <input type="date" name="end_date" class="form-control border-light rounded-3" value="<?= $end_date ?>">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">Action</label>
+                <select name="action" class="form-select border-light">
+                    <option value="">All actions</option>
+                    <?php
+                    $commonActions = ['TASK_CREATED','TASK_ASSIGNED','TASK_APPROVED','TASK_REJECTED','REPORT_SUBMITTED','FEEDBACK_RECORDED','USER_LOGIN','USER_LOGOUT','PASSWORD_CHANGED','PASSWORD_RESET_REQUESTED','AUTHORITY_DELEGATED','TASK_ESCALATED','TASK_DISPATCHED'];
+                    foreach ($commonActions as $act): ?>
+                        <option value="<?= $act ?>" <?= $action_filter === $act ? 'selected' : '' ?>><?= $act ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted">User</label>
+                <select name="user_id" class="form-select border-light">
+                    <option value="">All users</option>
+                    <?php foreach ($users as $u): ?>
+                        <option value="<?= $u['id'] ?>" <?= ($user_filter == $u['id']) ? 'selected' : '' ?>><?= htmlspecialchars($u['full_name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="col-md-4">
                 <label class="form-label small fw-bold text-muted">Quick Search</label>
@@ -133,6 +183,36 @@ function getActionBadge($action) {
                 </tbody>
             </table>
         </div>
+    </div>
+    <div class="mt-3 d-flex justify-content-between align-items-center">
+        <div class="small text-muted">Showing <?= count($logs) ?> of <?= $totalRows ?> records</div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                <?php
+                $baseParams = [];
+                if ($start_date) $baseParams['start_date'] = $start_date;
+                if ($end_date) $baseParams['end_date'] = $end_date;
+                if ($action_filter) $baseParams['action'] = $action_filter;
+                if ($user_filter) $baseParams['user_id'] = $user_filter;
+
+                $prevPage = max(1, $page - 1);
+                $nextPage = min($totalPages ?: 1, $page + 1);
+                $prevParams = array_merge($baseParams, ['page' => $prevPage]);
+                $nextParams = array_merge($baseParams, ['page' => $nextPage]);
+                ?>
+                <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query($prevParams) ?>">&laquo; Prev</a>
+                </li>
+                <?php for ($p = 1; $p <= max(1, $totalPages); $p++):
+                    $pParams = array_merge($baseParams, ['page' => $p]);
+                ?>
+                    <li class="page-item <?= ($p == $page) ? 'active' : '' ?>"><a class="page-link" href="?<?= http_build_query($pParams) ?>"><?= $p ?></a></li>
+                <?php endfor; ?>
+                <li class="page-item <?= ($page >= ($totalPages ?: 1)) ? 'disabled' : '' ?>">
+                    <a class="page-link" href="?<?= http_build_query($nextParams) ?>">Next &raquo;</a>
+                </li>
+            </ul>
+        </nav>
     </div>
 </div>
 

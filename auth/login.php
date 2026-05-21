@@ -1,9 +1,10 @@
+<?php require_once __DIR__ . '/../includes/lang.php'; ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?php echo $current_lang; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BDTSC-IETMS | Secure Login</title>
+    <title><?php echo __('login_title'); ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -111,14 +112,14 @@
 
 <div class="login-card">
     <div class="text-end mb-2 no-print">
-        <a href="?lang=en" class="badge text-decoration-none border text-dark fw-normal">EN</a>
-        <a href="?lang=am" class="badge text-decoration-none border text-dark fw-normal">አማ</a>
+        <a href="<?php echo lang_url('en'); ?>" class="badge text-decoration-none border text-dark fw-normal <?php echo $current_lang == 'en' ? 'active' : ''; ?>"><?php echo __('english'); ?></a>
+        <a href="<?php echo lang_url('am'); ?>" class="badge text-decoration-none border text-dark fw-normal <?php echo $current_lang == 'am' ? 'active' : ''; ?>"><?php echo __('amharic'); ?></a>
     </div>
 
     <div class="text-center mb-4">
         <img src="../assets/images/bdtsc_logo.png" alt="BDTSC Logo" style="width: 65px; margin-bottom: 10px;" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2942/2942504.png';">
         <h3 class="fw-bold mb-1" style="color: var(--bdtsc-color);">BDTSC - IETMS</h3>
-        <p class="text-muted small">Industrial Task Management System</p>
+        <p class="text-muted small"><?php echo __('industrial_task_management_system'); ?></p>
     </div>
 
     <?php if (isset($_GET['success'])): ?>
@@ -135,14 +136,14 @@
     
     <form action="login_process.php" method="POST">
         <div class="mb-3">
-            <label class="form-label small fw-bold text-secondary">Email / ኢሜይል</label>
+            <label class="form-label small fw-bold text-secondary"><?php echo __('email'); ?></label>
             <input type="email" name="email" class="form-control" placeholder="name@bdtsc.com" required>
         </div>
         
         <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center mb-1">
-        <label class="form-label small fw-bold text-secondary mb-0">Password / የይለፍ ቃል</label>
-        <a href="forgot_password.php" class="small text-decoration-none fw-bold" style="color: var(--bdtsc-color); font-size: 11px;">Forgot? / ረስተዋል?</a>
+        <label class="form-label small fw-bold text-secondary mb-0"><?php echo __('password'); ?></label>
+        <a href="forgot_password.php" class="small text-decoration-none fw-bold" style="color: var(--bdtsc-color); font-size: 11px;"><?php echo __('forgot'); ?></a>
     </div>
     <div class="input-group">
         <input type="password" name="password" id="password" class="form-control" style="border-right: none;" placeholder="••••••••" required>
@@ -154,14 +155,14 @@
 
        <div class="d-grid mb-3">
     <button type="submit" name="login_btn" id="loginBtn" class="btn btn-bdtsc" disabled style="opacity: 0.6; cursor: not-allowed;">
-        Login / ግባ <i class="bi bi-arrow-right-short ms-1"></i>
+        <?php echo __('login_button'); ?> <i class="bi bi-arrow-right-short ms-1"></i>
     </button>
 </div>
     </form>
 
     <div class="text-center mt-2">
         <a href="../index.php" class="back-home">
-            <i class="bi bi-house-door"></i> Back to Home / ወደ ዋናው ገጽ
+            <i class="bi bi-house-door"></i> <?php echo __('back_to_home'); ?>
         </a>
     </div>
 

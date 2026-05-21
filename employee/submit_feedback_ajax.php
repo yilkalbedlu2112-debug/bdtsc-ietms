@@ -34,7 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $feedback_id = $pdo->lastInsertId();
 
             // 4. UC-16: Audit Log መመዝገብ
-            if (function_exists('log_action')) {
+            $details = sprintf('feedback_id=%d; user_id=%d; category=%s; excerpt=%s', $feedback_id, $user_id, $category, substr($description,0,200));
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $user_id, 'FEEDBACK_SUBMITTED', $details);
+            } else if (function_exists('log_action')) {
                 log_action($pdo, $user_id, "Feedback Submitted", "Submitted $category feedback: " . substr($description, 0, 50));
             }
 

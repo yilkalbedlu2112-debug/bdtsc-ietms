@@ -65,10 +65,12 @@ try {
 
     $new_id = $pdo->lastInsertId();
 
-    $log_detail = "$user_role ($full_name) created task #$new_id"
-                . ($is_cross_dept ? " [Cross-Dept → dept ID $receiver_dept_id]" : "")
-                . " | Type: $task_type | Subject: $title";
-    log_action($pdo, $user_id, 'Task Created', $log_detail);
+    $log_detail = sprintf('task_id=%d; created_by=%d; dept_id=%d; cross_dept=%d; type=%s; title=%s', $new_id, $user_id, $dept_id, $is_cross_dept, $task_type, substr($title,0,200));
+    if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+        Database::log_system_activity($pdo, $user_id, 'TASK_CREATED', $log_detail);
+    } else {
+        log_action($pdo, $user_id, 'Task Created', $log_detail);
+    }
 
     $_SESSION['success'] = "Task created and logged successfully!";
     header("Location: dashboard.php");

@@ -14,7 +14,6 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manage
 
 // አሁን ከዚህ በታች ያለው ማንኛውም የ $pdo->prepare() ኮድ በትክክል ይሰራል!
 
-include '../includes/header_glass.php';
 
 // --- 1. ማጽደቂያ ቁልፍ ሲጫን የሚሰራው ክፍል ---
 if (isset($_GET['approve_id'])) {
@@ -49,6 +48,8 @@ $requests = $stmt->fetchAll();
 // ቀድሞ የጸደቁ (Approved History) - ይህ ሰዓቱ ያላለፈባቸውን ብቻ ያሳያል
 $stmt2 = $pdo->query("SELECT id, full_name, email FROM users WHERE reset_approved = 1 AND reset_token IS NOT NULL AND token_expiry > NOW() ORDER BY id DESC LIMIT 5");
 $approved_list = $stmt2->fetchAll();
+include '../includes/header_glass.php';
+
 ?>
 
 <!DOCTYPE html>

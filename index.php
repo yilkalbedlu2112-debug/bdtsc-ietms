@@ -64,6 +64,12 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -165,7 +171,6 @@ try {
             .hero p {
                 max-width: 100%;
             }
-            /* ስልክ ላይ አርማው እና ጽሁፉ እንዳይጨናነቁ */
             .navbar-brand div span {
                 font-size: 0.75rem !important;
             }
@@ -178,6 +183,7 @@ try {
             border-radius: 24px;
             box-shadow: 0 24px 80px rgba(15, 23, 42, 0.1);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            background: white;
         }
         .feature-card:hover {
             transform: translateY(-6px);
@@ -263,67 +269,8 @@ try {
         </div>
     </section>
 
-    <section class="py-5" id="about">
-        <div class="container">
-            <div class="row justify-content-center text-center mb-5">
-                <div class="col-lg-8">
-                    <span class="badge bg-info bg-opacity-15 text-info rounded-pill px-3 py-2 mb-3">Why BDTSC IETMS</span>
-                    <h2 class="fw-bold">A smarter operations platform for maintenance, production, and workers.</h2>
-                    <p class="text-muted mt-3">Our system brings clarity to industrial maintenance with automatic task distribution, analytics, and secure audit tracking.</p>
-                </div>
-            </div>
-            <div class="row g-4">
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="feature-card p-4 h-100">
-                        <div class="feature-icon bg-blue">
-                            <i class="bi bi-tools"></i>
-                        </div>
-                        <h5 class="fw-bold mb-3">Maintenance Tracking</h5>
-                        <p class="text-muted mb-0">Real-time monitoring of equipment maintenance requests and technician assignments.</p>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="feature-card p-4 h-100">
-                        <div class="feature-icon bg-green">
-                            <i class="bi bi-graph-up"></i>
-                        </div>
-                        <h5 class="fw-bold mb-3">Performance Analytics</h5>
-                        <p class="text-muted mb-0">Comprehensive reports and analytics for production efficiency and maintenance performance.</p>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="feature-card p-4 h-100">
-                        <div class="feature-icon bg-purple">
-                            <i class="bi bi-shield-check"></i>
-                        </div>
-                        <h5 class="fw-bold mb-3">Secure Audit Trail</h5>
-                        <p class="text-muted mb-0">Complete logging of all system activities with user_role-based access control.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="py-5 bg-white">
-        <div class="container">
-            <div class="row g-4 g-lg-5 align-items-stretch">
-                <div class="col-12 col-lg-6">
-                    <div class="p-4 h-100 rounded-4 shadow-sm border-start border-4 border-info bg-light">
-                        <h3 class="fw-bold mb-3 amharic-text" style="color: #123fa7;">ራዕይ (Vision)</h3>
-                        <p class="text-muted fs-5 italic">"በ2030 በምስራቅ አፍሪካ ተመራጭና ተወዳዳሪ የጨርቃጨርቅ ምርት አቅራቢ መሆን።"</p>
-                        <p class="text-secondary small english-text" style="color: #64748b !important;">"To be a preferred and competitive textile product provider in East Africa by 2030."</p>
-                    </div>
-                </div>
-                <div class="col-12 col-lg-6">
-                    <div class="p-4 h-100 rounded-4 shadow-sm border-start border-4 border-primary bg-light">
-                        <h3 class="fw-bold mb-3 amharic-text" style="color: #123fa7;">ተልዕኮ (Mission)</h3>
-                        <p class="text-muted fs-5">"ጥራቱን የጠበቀ ምርት በማቅረብ፣ የቴክኖሎጂ አጠቃቀማችንን በማሳደግ እና የሰራተኞቻችንን ብቃት በማጎልበት የደንበኞቻችንን ፍላጎት ማርካት።"</p>
-                        <p class="text-secondary small english-text" style="color: #64748b !important;">"Satisfying customer needs by providing quality products, enhancing technology usage, and developing employee competence."</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+    <div id="react-features-root"></div>
+    <div id="react-vision-root"></div>
 
     <footer class="footer" id="contact">
         <div class="container">
@@ -346,6 +293,120 @@ try {
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/react.development.js"></script>
+    <script src="js/react-dom.development.js"></script>
+
+    <script>
+        (function() {
+            const originalWarn = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('in-browser Babel transformer')) {
+                    return; 
+                }
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('React DevTools')) {
+                    return; 
+                }
+                originalWarn.apply(console, args);
+            };
+        })();
+    </script>
+
+    <script src="js/babel.min.js"></script>
+
+    <script type="text/babel">
+        // 1. Component for Features Section
+        function FeaturesComponent() {
+            const features = [
+                {
+                    title: "Maintenance Tracking",
+                    desc: "Real-time monitoring of equipment maintenance requests and technician assignments.",
+                    iconClass: "bi bi-tools",
+                    colorClass: "bg-blue"
+                },
+                {
+                    title: "Performance Analytics",
+                    desc: "Comprehensive reports and analytics for production efficiency and maintenance performance.",
+                    iconClass: "bi bi-graph-up",
+                    colorClass: "bg-green"
+                },
+                {
+                    title: "Secure Audit Trail",
+                    desc: "Complete logging of all system activities with user_role-based access control.",
+                    iconClass: "bi bi-shield-check",
+                    colorClass: "bg-purple"
+                }
+            ];
+
+            return (
+                <section className="py-5" id="about">
+                    <div className="container">
+                        <div className="row justify-content-center text-center mb-5">
+                            <div className="col-lg-8">
+                                <span className="badge bg-info bg-opacity-15 text-info rounded-pill px-3 py-2 mb-3">Why BDTSC IETMS</span>
+                                <h2 className="fw-bold">A smarter operations platform for maintenance, production, and workers.</h2>
+                                <p className="text-muted mt-3">Our system brings clarity to industrial maintenance with automatic task distribution, analytics, and secure audit tracking.</p>
+                            </div>
+                        </div>
+                        <div className="row g-4">
+                            {features.map((feat, index) => (
+                                <div className="col-12 col-md-6 col-xl-4" key={index}>
+                                    <div className="feature-card p-4 h-100">
+                                        <div className={`feature-icon ${feat.colorClass}`}>
+                                            <i className={feat.iconClass}></i>
+                                        </div>
+                                        <h5 className="fw-bold mb-3">{feat.title}</h5>
+                                        <p className="text-muted mb-0">{feat.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        // 2. Component for Vision & Mission Section
+        function VisionMissionComponent() {
+            return (
+                <section className="py-5 bg-white">
+                    <div className="container">
+                        <div className="row g-4 g-lg-5 align-items-stretch">
+                            <div className="col-12 col-lg-6">
+                                <div className="p-4 h-100 rounded-4 shadow-sm border-start border-4 border-info bg-light">
+                                    <h3 className="fw-bold mb-3" style={{color: '#123fa7', fontFamily: 'Segoe UI'}}>ራዕይ (Vision)</h3>
+                                    <p className="text-muted fs-5 italic">"በ2030 በምስራቅ አፍሪካ ተመራጭና ተወዳዳሪ የጨርቃጨርቅ ምርት አቅራቢ መሆን።"</p>
+                                    <p className="text-secondary small">"To be a preferred and competitive textile product provider in East Africa by 2030."</p>
+                                </div>
+                            </div>
+                            <div className="col-12 col-lg-6">
+                                <div className="p-4 h-100 rounded-4 shadow-sm border-start border-4 border-primary bg-light">
+                                    <h3 className="fw-bold mb-3" style={{color: '#123fa7', fontFamily: 'Segoe UI'}}>ተልዕኮ (Mission)</h3>
+                                    <p className="text-muted fs-5">"ጥራቱን የጠበቀ ምርት በማቅረብ፣ የቴክኖሎጂ አጠቃቀማችንን በማሳደግ እና የሰራተኞቻችንን ብቃት በማጎልበት የደንበኞቻችንን ፍላጎት ማርካት።"</p>
+                                    <p className="text-secondary small">"Satisfying customer needs by providing quality products, enhancing technology usage, and developing employee competence."</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+
+        // 🛠️ Render Components safely without multiple createRoot warnings
+        const featuresContainer = document.getElementById('react-features-root');
+        if (featuresContainer && !window.featuresRootInstance) {
+            window.featuresRootInstance = window.ReactDOM.createRoot(featuresContainer);
+            window.featuresRootInstance.render(<FeaturesComponent />);
+        } else if (window.featuresRootInstance) {
+            window.featuresRootInstance.render(<FeaturesComponent />);
+        }
+
+        const visionContainer = document.getElementById('react-vision-root');
+        if (visionContainer && !window.visionRootInstance) {
+            window.visionRootInstance = window.ReactDOM.createRoot(visionContainer);
+            window.visionRootInstance.render(<VisionMissionComponent />);
+        } else if (window.visionRootInstance) {
+            window.visionRootInstance.render(<VisionMissionComponent />);
+        }
+    </script>
 </body>
 </html>

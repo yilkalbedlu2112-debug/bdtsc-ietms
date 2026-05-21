@@ -111,6 +111,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $dept_id > 0) {
                 log_action($pdo, $user_id, 'TASK_APPROVED_PERFECT',
                     "Task #{$task_id} ({$task_title}) approved with perfect quality. Employee: {$employee_name}."
                 );
+                // Audit: TASK_APPROVED (record old/new status and approver)
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    $details = sprintf('task_id=%d; old_status=%s; new_status=Completed; approver=%d', $task_id, $row['status'] ?? 'Unknown', $user_id);
+                    Database::log_system_activity($pdo, $user_id, 'TASK_APPROVED', $details);
+                }
                 $success_msg = "🎉 Task #{$task_id} approved! Excellent work by {$employee_name}.";
 
             // ── ACTION: REDO (Quality Issues) ────────────────────────────────
@@ -136,6 +141,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $dept_id > 0) {
                 log_action($pdo, $user_id, 'TASK_RETURNED_QUALITY',
                     "Task #{$task_id} ({$task_title}) returned to {$employee_name} for quality improvement. Reason: {$comment}"
                 );
+                // Audit: TASK_REJECTED (returned for quality)
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    $details = sprintf('task_id=%d; old_status=%s; new_status=Assigned; reviewer=%d; reason=%s', $task_id, $row['status'] ?? 'Unknown', $user_id, substr($comment,0,200));
+                    Database::log_system_activity($pdo, $user_id, 'TASK_REJECTED', $details);
+                }
                 $success_msg = "⚠️ Task #{$task_id} returned to {$employee_name} for quality improvement.";
 
             // ── ACTION: ESCALATE ────────────────────────────────────
@@ -173,6 +183,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $dept_id > 0) {
                 log_action($pdo, $user_id, 'TASK_ESCALATED',
                     "Task #{$task_id} ({$task_title}) escalated to Supervisor(s): " . implode(', ', $sup_names) . ". Reason: {$comment}"
                 );
+                // Audit: TASK_ESCALATED
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    $details = sprintf('task_id=%d; escalated_to=%s; escalator=%d; reason=%s', $task_id, implode(',', $sup_names), $user_id, substr($comment,0,200));
+                    Database::log_system_activity($pdo, $user_id, 'TASK_ESCALATED', $details);
+                }
                 $success_msg = "Task #{$task_id} escalated urgently to: " . implode(', ', $sup_names) . '.';
             }
 
@@ -190,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $dept_id > 0) {
 // Tasks completed by employees (is_verified = 0) + tasks still In Progress
 $review_tasks = [];
 $in_progress_tasks = [];
+$reviewed_tasks = [];
 if ($dept_id > 0) {
     // Completed but not verified → needs SL review
     $r1 = $pdo->prepare(
@@ -222,6 +238,22 @@ if ($dept_id > 0) {
     );
     $r2->execute([$dept_id, $dept_id, $dept_id]);
     $in_progress_tasks = $r2->fetchAll(PDO::FETCH_ASSOC);
+
+    // Tasks already reviewed / approved / returned by Shift Leader
+    $r3 = $pdo->prepare(
+        "SELECT mr.id,
+                COALESCE(mr.title, mr.machine_name, 'Untitled') AS task_title,
+                mr.status, mr.is_verified, mr.feedback, mr.updated_at,
+                u.full_name AS employee_name
+         FROM maintenance_requests mr
+         LEFT JOIN users u ON mr.assigned_to = u.id
+         WHERE COALESCE(mr.feedback, '') <> ''
+           AND (mr.dept_id = ? OR mr.sender_dept_id = ? OR mr.receiver_dept_id = ?)
+         ORDER BY mr.updated_at DESC
+         LIMIT 20"
+    );
+    $r3->execute([$dept_id, $dept_id, $dept_id]);
+    $reviewed_tasks = $r3->fetchAll(PDO::FETCH_ASSOC);
 }
 
 include __DIR__ . '/../includes/header_glass.php';
@@ -361,7 +393,64 @@ include __DIR__ . '/../includes/header_glass.php';
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- SECTION 2: In Progress tasks (monitor + escalate if needed)  -->
+    <!-- SECTION 2: Recently reviewed tasks (approved / returned)      -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-info text-white fw-semibold py-3">
+            <i class="bi bi-list-check me-2"></i>Recently Reviewed Reports
+            <?php if (count($reviewed_tasks) > 0): ?>
+                <span class="badge bg-light text-info ms-2"><?php echo count($reviewed_tasks); ?></span>
+            <?php endif; ?>
+        </div>
+        <div class="card-body">
+            <?php if (empty($reviewed_tasks)): ?>
+                <p class="text-muted mb-0"><i class="bi bi-info-circle me-1"></i>No reviewed reports to show yet.</p>
+            <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Task</th>
+                            <th>Employee</th>
+                            <th>Result</th>
+                            <th>Feedback</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($reviewed_tasks as $task): ?>
+                        <?php
+                            $resultBadge = 'secondary';
+                            $resultLabel = 'Reviewed';
+                            if ($task['status'] === 'Completed' && ($task['is_verified'] == 1 || $task['is_verified'] === '1')) {
+                                $resultBadge = 'success';
+                                $resultLabel = 'Approved';
+                            } elseif (!empty($task['feedback'])) {
+                                $resultBadge = 'danger';
+                                $resultLabel = 'Returned';
+                            }
+                        ?>
+                        <tr>
+                            <td>#<?php echo (int) $task['id']; ?></td>
+                            <td><?php echo htmlspecialchars($task['task_title'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars($task['employee_name'] ?? 'Unknown', ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><span class="badge bg-<?php echo $resultBadge; ?> bg-opacity-10 text-<?php echo $resultBadge === 'warning' ? 'dark' : $resultBadge; ?>"><?php echo $resultLabel; ?></span></td>
+                            <td class="text-truncate" style="max-width: 260px;">
+                                <?php echo htmlspecialchars(mb_substr($task['feedback'] ?? '', 0, 80), ENT_QUOTES, 'UTF-8'); ?>
+                            </td>
+                            <td class="small text-muted"><?php echo htmlspecialchars(date('M d, Y H:i', strtotime($task['updated_at'] ?? 'now')), ENT_QUOTES, 'UTF-8'); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- SECTION 3: In Progress tasks (monitor + escalate if needed)  -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-warning bg-opacity-75 fw-semibold py-3">

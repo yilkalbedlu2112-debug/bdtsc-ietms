@@ -54,7 +54,7 @@ if (isset($_POST['submit_report'])) {
             $pdo->beginTransaction();
 
             // ሪፖርቱን መመዝገብ
-            $sql = "INSERT INTO production_reports (user_id, dept_id, machine_name, quantity_produced, unit, shift, reported_to_id, remarks, report_date) 
+            $sql = "INSERT INTO production_reports (user_id, dept_id, machine_name, quantity_produced, unit, shift, reported_to, remarks, report_date) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$user_id, $dept_id, $machine_name, $quantity, $unit, $shift, $target_id, $remarks]);

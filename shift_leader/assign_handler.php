@@ -206,8 +206,14 @@ try {
     }
 
     // ── AUDIT LOG ───────────────────────────────────────────────────
-    $logDetail = "Task #{$task_id} delegated to {$employee_name}";
-    log_action($pdo, $shift_leader_id, 'TASK_ASSIGNMENT', $logDetail);
+    $oldAssigned = $taskRow['assigned_to'] ?? null;
+    $logDetail = "Task #{$task_id} delegated to {$employee_name} (old_assigned_to={$oldAssigned})";
+    if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+        $details = sprintf('task_id=%d; source=%s; old_assigned_to=%s; new_assigned_to=%d; by=%d', $task_id, $source, $oldAssigned ?? 'null', $employee_id, $shift_leader_id);
+        Database::log_system_activity($pdo, $shift_leader_id, 'TASK_ASSIGNED', $details);
+    } else {
+        log_action($pdo, $shift_leader_id, 'TASK_ASSIGNMENT', $logDetail);
+    }
 
     // ── Commit & redirect ───────────────────────────────────────────
     $pdo->commit();

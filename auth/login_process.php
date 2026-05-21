@@ -23,9 +23,12 @@ if (isset($_POST['login_btn'])) {
         $_SESSION['dept_id'] = $user['dept_id'];
         $_SESSION['dept_name'] = $user['dept_name'] ?? 'General';
 $_SESSION['profile_pic'] = !empty($user['profile_pic']) ? $user['profile_pic'] : 'default_user.jpg';
-        // ድርጊቱን መመዝገብ
-        if (function_exists('log_action')) {
-            log_action($pdo, $user['id'], "Login", "User logged into the system");
+        // Audit: successful user login
+        if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+            $details = sprintf('user_id=%d; email=%s; ip=%s', $user['id'], filter_var($email, FILTER_SANITIZE_EMAIL), $_SERVER['REMOTE_ADDR'] ?? '');
+            Database::log_system_activity($pdo, $user['id'], 'USER_LOGIN', $details);
+        } else if (function_exists('log_action')) {
+            log_action($pdo, $user['id'], 'USER_LOGIN', 'User logged in');
         }
 
         // ---------------------------------------------------------

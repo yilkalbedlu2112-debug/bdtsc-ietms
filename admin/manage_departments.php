@@ -21,12 +21,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $dept_id = (int)$_POST['dept_id'];
             if ($deptObj->update($dept_id, $dept_name, $description)) {
                 $message = 'Department updated successfully.';
-                Database::log_action($pdo, $_SESSION['user_id'], 'Department Update', "Updated department: $dept_name");
+                $details = sprintf('dept_id=%d; name=%s', $dept_id, $dept_name);
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    Database::log_system_activity($pdo, $_SESSION['user_id'], 'DEPARTMENT_UPDATED', $details);
+                } else {
+                    Database::log_action($pdo, $_SESSION['user_id'], 'Department Update', "Updated department: $dept_name");
+                }
             }
         } else {
             if ($deptObj->create($dept_name, $description)) {
                 $message = 'Department added successfully.';
-                Database::log_action($pdo, $_SESSION['user_id'], 'Department Add', "Added department: $dept_name");
+                $details = sprintf('name=%s', $dept_name);
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    Database::log_system_activity($pdo, $_SESSION['user_id'], 'DEPARTMENT_CREATED', $details);
+                } else {
+                    Database::log_action($pdo, $_SESSION['user_id'], 'Department Add', "Added department: $dept_name");
+                }
             }
         }
     }
@@ -38,7 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($dept) {
             if ($deptObj->delete($dept_id)) {
                 $message = 'Department deleted successfully.';
-                Database::log_action($pdo, $_SESSION['user_id'], 'Department Deletion', "Deleted department: {$dept['dept_name']}");
+                $details = sprintf('dept_id=%d; name=%s', $dept_id, $dept['dept_name']);
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    Database::log_system_activity($pdo, $_SESSION['user_id'], 'DEPARTMENT_DELETED', $details);
+                } else {
+                    Database::log_action($pdo, $_SESSION['user_id'], 'Department Deletion', "Deleted department: {$dept['dept_name']}");
+                }
             }
         }
     }

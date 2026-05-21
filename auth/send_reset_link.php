@@ -5,7 +5,7 @@ use PHPMailer\PHPMailer\Exception;
 // PHPMailer ፋይሎች ያሉበትን አድራሻ በትክክል ማመላከትህን አረጋግጥ
 require '../vendor/autoload.php'; 
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 if (isset($_POST['reset_request'])) {
     $email = trim($_POST['email']);
 
@@ -57,6 +57,14 @@ $reset_link = "http://192.168.137.1/bdtsc-ietms/auth/reset_password.php?token=" 
                 </div>";
 
             $mail->send();
+            // Audit: PASSWORD_RESET_REQUESTED
+            if (isset($user['id'])) {
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    Database::log_system_activity($pdo, $user['id'], 'PASSWORD_RESET_REQUESTED', 'Password reset link requested');
+                } else {
+                    log_action($pdo, $user['id'], 'PASSWORD_RESET_REQUESTED', 'Password reset link requested');
+                }
+            }
             header("Location: forgot_password.php?success=የመቀየሪያ ሊንክ ወደ ኢሜይልዎ ተልኳል። እባክዎ ኢንቦክስዎን ቼክ ያድርጉ።");
             exit();
 

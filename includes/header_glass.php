@@ -36,9 +36,9 @@ $my_active_delegation = $stmt_check->fetch();
         <div class="d-flex align-items-center">
             <i class="bi bi-shield-lock-fill fs-4 me-3 text-dark"></i>
             <div>
-                <span class="fw-bold text-dark">Delegation Active:</span> 
-                You are currently acting on behalf of <strong><?php echo htmlspecialchars($my_active_delegation['manager_name']); ?></strong>.
-                <small class="d-block text-muted">Reason: <?php echo htmlspecialchars($my_active_delegation['remark']); ?></small>
+                <span class="fw-bold text-dark"><?php echo __('delegation_active'); ?></span> 
+                <?php echo __('you_are_acting_on_behalf'); ?> <strong><?php echo htmlspecialchars($my_active_delegation['manager_name']); ?></strong>.
+                <small class="d-block text-muted"><?php echo __('reason'); ?> <?php echo htmlspecialchars($my_active_delegation['remark']); ?></small>
             </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -275,8 +275,8 @@ $my_active_delegation = $stmt_check->fetch();
 <body>
 
 <div class="language-switcher">
-    <a href="?lang=en" class="<?php echo $current_lang == 'en' ? 'active' : ''; ?>">EN</a> |
-    <a href="?lang=am" class="<?php echo $current_lang == 'am' ? 'active' : ''; ?>">አማ</a>
+    <a href="<?php echo lang_url('en'); ?>" class="<?php echo $current_lang == 'en' ? 'active' : ''; ?>"><?php echo __('english'); ?></a> |
+    <a href="<?php echo lang_url('am'); ?>" class="<?php echo $current_lang == 'am' ? 'active' : ''; ?>"><?php echo __('amharic'); ?></a>
 </div>
 
 <div class="container-fluid p-0">
@@ -313,7 +313,7 @@ $my_active_delegation = $stmt_check->fetch();
                 <a href="<?php echo $base_url; ?>/admin/manage_departments.php" class="<?php echo $current_page == 'manage_departments.php' ? 'active' : ''; ?>"><i class="bi bi-building"></i> <?php echo __('departments'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/audit_trail.php" class="<?php echo $current_page == 'audit_trail.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> <?php echo __('audit_logs'); ?></a>
                 <a href="<?php echo $base_url; ?>/admin/reports.php" class="<?php echo $current_page == 'reports.php' ? 'active' : ''; ?>"><i class="bi bi-graph-up"></i> <?php echo __('reports'); ?></a>
-                <a href="<?php echo $base_url; ?>/admin/admin_approval.php" class="<?php echo $current_page == 'admin_approval.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> Password Requests
+                <a href="<?php echo $base_url; ?>/admin/admin_approval.php" class="<?php echo $current_page == 'admin_approval.php' ? 'active' : ''; ?>"><i class="bi bi-shield-check"></i> <?php echo __('password_requests'); ?>
                     <?php
                         $stmt_count = $pdo->query("SELECT COUNT(*) FROM users WHERE reset_token IS NOT NULL AND reset_approved = 0");
                         $pending_count = $stmt_count->fetchColumn();
@@ -325,7 +325,7 @@ $my_active_delegation = $stmt_check->fetch();
                     <?php endif; ?>
                 </a>
                 <a href="<?php echo $base_url; ?>/admin/gm_delegation.php" class="<?php echo $current_page == 'gm_delegation.php' ? 'active' : ''; ?>">
-            <i class="bi bi-shield-shaded"></i> Authority Delegation
+            <i class="bi bi-shield-shaded"></i> <?php echo __('authority_delegation'); ?>
         </a>
 
                 <!--department manager and engineering manager share some links but not all, so we check role again for those specific links-->
@@ -337,7 +337,7 @@ $my_active_delegation = $stmt_check->fetch();
 
     <!-- NEW: Delegation (የተጨመረ) -->
     <a href="<?php echo $base_url; ?>/manager/delegation.php" class="<?php echo $current_page == 'delegation.php' ? 'active' : ''; ?> position-relative">
-        <i class="bi bi-person-gear"></i> Authority Delegation
+        <i class="bi bi-person-gear"></i> <?php echo __('authority_delegation'); ?>
         <?php
             // ንቁ ውክልና ካለ ትንሽ አረንጓዴ ነጥብ ለማሳየት
             $check_del = $pdo->prepare("SELECT COUNT(*) FROM delegations WHERE delegated_by = ? AND status = 'Active'");
@@ -350,17 +350,17 @@ $my_active_delegation = $stmt_check->fetch();
 
     <!-- Create Task -->
     <a href="<?php echo $base_url; ?>/manager/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>">
-        <i class="bi bi-plus-square"></i> Create Task
+        <i class="bi bi-plus-square"></i> <?php echo __('create_task'); ?>
     </a>
 
     <!-- Maintenance Log -->
     <a href="<?php echo $base_url; ?>/manager/maintenance_list.php" class="<?php echo $current_page == 'maintenance_list.php' ? 'active' : ''; ?>">
-        <i class="bi bi-tools"></i> Maintenance Log
+        <i class="bi bi-tools"></i> <?php echo __('maintenance_log'); ?>
     </a>
 
     <!-- Cross-Dept Requests -->
     <a href="<?php echo $base_url; ?>/manager/view_requests.php" class="<?php echo $current_page == 'view_requests.php' ? 'active' : ''; ?> position-relative">
-        <i class="bi bi-inbox"></i> Cross-Dept Requests
+        <i class="bi bi-inbox"></i> <?php echo __('cross_dept_requests'); ?>
         <?php
             $notif_dm = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE receiver_dept_id = ? AND is_read_by_receiver = 0");
             $notif_dm->execute([$_SESSION['dept_id'] ?? 0]);
@@ -373,7 +373,7 @@ $my_active_delegation = $stmt_check->fetch();
 
     <!-- Analytics -->
     <a href="<?php echo $base_url; ?>/manager/productivity_analytics.php" class="<?php echo $current_page == 'productivity_analytics.php' ? 'active' : ''; ?>">
-        <i class="bi bi-graph-up-arrow"></i> Productivity
+        <i class="bi bi-graph-up-arrow"></i> <?php echo __('productivity'); ?>
     </a>
 
     <!-- Audit Logs -->
@@ -386,6 +386,9 @@ $my_active_delegation = $stmt_check->fetch();
         <i class="bi bi-file-earmark-pdf"></i> <?php echo __('reports'); ?>
     </a>
 
+    <a href="<?php echo $base_url; ?>/manager/manager_feedback.php" class="nav-link-custom <?php echo $current_page == 'manager_feedback.php' ? 'active' : ''; ?>">
+        <i class="bi bi-chat-square-text"></i> <?php echo __('feedback'); ?>
+    </a>
     <!--Engineering manager has some overlapping links with department manager but not all, so we check role again for those specific links-->
     
             <?php elseif ($user_role === 'Engineering Manager'): ?>
@@ -396,7 +399,7 @@ $my_active_delegation = $stmt_check->fetch();
         <i class="bi bi-tools"></i> Maintenance Log
     </a>
     <a href="<?php echo $base_url; ?>/manager/view_requests.php" class="<?php echo $current_page == 'view_requests.php' ? 'active' : ''; ?> position-relative">
-        <i class="bi bi-send-check"></i> Dispatch Center
+        <i class="bi bi-send-check"></i> <?php echo __('dispatch_center'); ?>
         <?php
             $notif_eng = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE receiver_dept_id = ? AND is_read_by_receiver = 0");
             $notif_eng->execute([$_SESSION['dept_id'] ?? 0]);
@@ -425,17 +428,18 @@ $my_active_delegation = $stmt_check->fetch();
                 <!-- Shift Leader: Department-scoped task delegation & review -->
             <?php elseif ($user_role === 'Shift Leader'): ?>
                 <a href="<?php echo $base_url; ?>/shift_leader/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
-                <a href="<?php echo $base_url; ?>/shift_leader/assign_task_view.php" class="<?php echo $current_page == 'assign_task_view.php' ? 'active' : ''; ?>"><i class="bi bi-person-plus"></i> Assign Tasks</a>
-                <a href="<?php echo $base_url; ?>/shift_leader/approve_task.php" class="<?php echo $current_page == 'approve_task.php' ? 'active' : ''; ?>"><i class="bi bi-check2-square"></i> Review Tasks</a>
-                <a href="<?php echo $base_url; ?>/shift_leader/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> Submit Report</a>
+<a href="<?php echo $base_url; ?>/shift_leader/assign_task_view.php" class="<?php echo $current_page == 'assign_task_view.php' ? 'active' : ''; ?>"><i class="bi bi-person-plus"></i> <?php echo __('assign_tasks'); ?></a>
+    <a href="<?php echo $base_url; ?>/shift_leader/approve_task.php" class="<?php echo $current_page == 'approve_task.php' ? 'active' : ''; ?>"><i class="bi bi-check2-square"></i> <?php echo __('review_tasks'); ?></a>
+    <a href="<?php echo $base_url; ?>/shift_leader/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> <?php echo __('submit_report'); ?></a>
 
                 <!-- Supervisor: Oversees Shift Leaders, creates & assigns tasks -->
             <?php elseif ($user_role === 'Supervisor'): ?>
-                <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
-                <a href="<?php echo $base_url; ?>/supervisor/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"><i class="bi bi-plus-square"></i> Create Task</a>
-                <a href="<?php echo $base_url; ?>/supervisor/assign_task.php" class="<?php echo $current_page == 'assign_task.php' ? 'active' : ''; ?>"><i class="bi bi-person-plus"></i> Assign Task</a>
-                <a href="<?php echo $base_url; ?>/supervisor/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> Submit Report</a>
-
+    <a href="<?php echo $base_url; ?>/supervisor/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>
+    <a href="<?php echo $base_url; ?>/supervisor/create_task.php" class="<?php echo $current_page == 'create_task.php' ? 'active' : ''; ?>"><i class="bi bi-plus-square"></i> <?php echo __('create_task'); ?></a>
+    <a href="<?php echo $base_url; ?>/supervisor/assign_task.php" class="<?php echo $current_page == 'assign_task.php' ? 'active' : ''; ?>"><i class="bi bi-person-plus"></i> <?php echo __('assign_task'); ?></a>
+    <a href="<?php echo $base_url; ?>/supervisor/submit_report.php" class="<?php echo $current_page == 'submit_report.php' ? 'active' : ''; ?>"><i class="bi bi-file-earmark-plus"></i> <?php echo __('submit_report'); ?></a>
+    
+    <a href="<?php echo $base_url; ?>/supervisor/supervisor_feedback.php" class="<?php echo $current_page == 'supervisor_feedback.php' ? 'active' : ''; ?>"><i class="bi bi-chat-left-text"></i> <?php echo __('shift_leader_reports'); ?></a>
                 <!-- Employee: Views own tasks, reports production -->
             <?php else: ?>
                 <a href="<?php echo $base_url; ?>/employee/dashboard.php" class="<?php echo $current_page == 'dashboard.php' ? 'active' : ''; ?>"><i class="bi bi-speedometer2"></i> <?php echo __('dashboard'); ?></a>

@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
@@ -28,7 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
         
         if ($update->execute([$hashed, $_SESSION['user_id']])) {
-            log_action($pdo, $_SESSION['user_id'], 'Security', 'User updated their password via Profile Manager.');
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $_SESSION['user_id'], 'PASSWORD_CHANGED', 'User changed password via profile');
+            } else {
+                log_action($pdo, $_SESSION['user_id'], 'PASSWORD_CHANGED', 'User changed password via profile');
+            }
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'error' => 'Database error.']);

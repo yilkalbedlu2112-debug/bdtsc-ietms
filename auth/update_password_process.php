@@ -1,6 +1,7 @@
 <?php
 require '../includes/db.php';
 
+/** @var PDO $pdo */
 if (isset($_POST['update_btn'])) {
     $token = $_POST['token'];
     $new_password = $_POST['new_password'];
@@ -26,6 +27,12 @@ $stmt = $pdo->prepare("SELECT * FROM users WHERE reset_token = ? AND token_expir
         $success = $update->execute([$hashed_password, $token]);
 
         if ($success) {
+            // Audit: PASSWORD_CHANGED (via reset link)
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $user['id'], 'PASSWORD_CHANGED', 'Password changed via reset link');
+            } else {
+                log_action($pdo, $user['id'], 'PASSWORD_CHANGED', 'Password changed via reset link');
+            }
             header("Location: login.php?success=የይለፍ ቃልዎ በተሳካ ሁኔታ ተቀይሯል። አሁን መግባት ይችላሉ።");
         } else {
             header("Location: reset_password.php?token=$token&error=ስህተት ተፈጥሯል፣ እባክዎ ድጋሚ ይሞክሩ።");

@@ -2,7 +2,7 @@
 session_start();
 
 require_once '../includes/db.php';
-
+/** @var PDO $pdo */
 // 1. የመግቢያ ፈቃድ ማረጋገጫ
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manager') {
     header("Location: ../auth/login.php");
@@ -11,7 +11,6 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'General Manage
 
 $full_name = $_SESSION['full_name'] ?? 'Admin';
 
-include '../includes/header_glass.php';
 
 $user_count = $pdo->query("SELECT count(*) FROM users")->fetchColumn();
 $dept_count = $pdo->query("SELECT count(*) FROM departments")->fetchColumn();
@@ -40,6 +39,7 @@ $status_data = $status_query->fetchAll();
 
 $dept_data = $pdo->query("SELECT d.dept_name, COUNT(m.id) AS total FROM maintenance_requests m JOIN departments d ON m.dept_id = d.id GROUP BY m.dept_id ORDER BY total DESC LIMIT 10")->fetchAll();
 
+include '../includes/header_glass.php';
 ?>
 <div class="row">
     <div class="col-md-12">

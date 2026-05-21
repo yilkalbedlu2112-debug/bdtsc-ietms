@@ -25,7 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_user'])) {
         $res = $userObj->createUser($_POST['full_name'], $_POST['email'], $_POST['password'], $_POST['user_role'], $_POST['dept_id']);
         if ($res) {
-            Database::log_action($pdo, $_SESSION['user_id'], 'User Registration', "Registered: {$_POST['full_name']}");
+            $details = sprintf('full_name=%s; email=%s', $_POST['full_name'], $_POST['email']);
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $_SESSION['user_id'], 'USER_CREATED', $details);
+            } else {
+                Database::log_action($pdo, $_SESSION['user_id'], 'User Registration', "Registered: {$_POST['full_name']}");
+            }
             $message = 'User registered successfully.';
         }
     }
@@ -34,7 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_user'])) {
         $res = $userObj->updateUser($_POST['user_id'], $_POST['full_name'], $_POST['email'], $_POST['user_role'], $_POST['dept_id'], $_POST['status']);
         if ($res) {
-            Database::log_action($pdo, $_SESSION['user_id'], 'User Update', "Updated ID: {$_POST['user_id']}");
+            $details = sprintf('user_id=%d; full_name=%s', (int)$_POST['user_id'], $_POST['full_name']);
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $_SESSION['user_id'], 'USER_UPDATED', $details);
+            } else {
+                Database::log_action($pdo, $_SESSION['user_id'], 'User Update', "Updated ID: {$_POST['user_id']}");
+            }
             $message = 'User updated successfully.';
             $edit_user = null;
         }
@@ -47,7 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'የራስዎን አካውንት መዝጋት አይችሉም።';
         } else {
             $userObj->toggleStatus($_POST['user_id'], $new_status);
-            Database::log_action($pdo, $_SESSION['user_id'], 'Status Change', "ID {$_POST['user_id']} to $new_status");
+            $details = sprintf('user_id=%d; new_status=%s', (int)$_POST['user_id'], $new_status);
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $_SESSION['user_id'], 'USER_STATUS_CHANGED', $details);
+            } else {
+                Database::log_action($pdo, $_SESSION['user_id'], 'Status Change', "ID {$_POST['user_id']} to $new_status");
+            }
             $message = "Status changed to $new_status.";
         }
     }
@@ -55,7 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 4. Password Reset
     if (isset($_POST['reset_password'])) {
         $userObj->resetPassword($_POST['user_id'], '123456');
-        Database::log_action($pdo, $_SESSION['user_id'], 'Password Reset', "ID: {$_POST['user_id']}");
+        $details = sprintf('user_id=%d; reset_by=%d', (int)$_POST['user_id'], $_SESSION['user_id']);
+        if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+            Database::log_system_activity($pdo, $_SESSION['user_id'], 'PASSWORD_RESET_FORCED', $details);
+        } else {
+            Database::log_action($pdo, $_SESSION['user_id'], 'Password Reset', "ID: {$_POST['user_id']}");
+        }
         $message = 'Password reset to 123456.';
     }
 }

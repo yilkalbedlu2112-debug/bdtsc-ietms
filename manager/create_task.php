@@ -80,9 +80,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_task'])) {
             if ($taskObj->createTask($task_data)) {
                 $new_id = $pdo->lastInsertId();
                 
-                // ኦዲት ሎግ
-                $log_msg = ($target_dept != $dept_id) ? "Sent Cross-Dept request #$new_id" : "Created internal task #$new_id";
-                log_action($pdo, $user_id, 'Task Created', $log_msg);
+                // ኦዲት ሎግ (standardized)
+                $details = sprintf('task_id=%d; created_by=%d; dept_id=%d; cross_dept=%d; title=%s', $new_id, $user_id, $dept_id, ($target_dept != $dept_id) ? 1 : 0, substr($title,0,200));
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    Database::log_system_activity($pdo, $user_id, 'TASK_CREATED', $details);
+                } else {
+                    log_action($pdo, $user_id, 'Task Created', $details);
+                }
 
                 // ማሳወቂያ መላክ
                 $notif_msg = "New Task Request from $dept_name: $title";

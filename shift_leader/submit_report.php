@@ -1,11 +1,19 @@
 <?php
 /**
+ * Industrial Employee Task Management System (IETMS)
  * Daily Shift Summary Report — structured form with 10 sections.
+ * Expected Graduation: July 2026
  */
-if (session_status() === PHP_SESSION_NONE) { session_start(); }
-if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'Shift Leader') {
-    header('Location: ../auth/login.php'); exit;
+if (session_status() === PHP_SESSION_NONE) { 
+    session_start(); 
 }
+
+// የደህንነት ማረጋገጫ (Authorization) - Shift Leader መሆኑን ማረጋገጥ
+if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'Shift Leader') {
+    header('Location: ../auth/login.php'); 
+    exit;
+}
+
 require_once __DIR__ . '/../includes/db.php';
 
 $user_id     = (int) $_SESSION['user_id'];
@@ -14,19 +22,22 @@ $leader_name = (string) ($_SESSION['full_name'] ?? 'Shift Leader');
 $dept_name   = trim((string) ($_SESSION['dept_name'] ?? ''));
 $user_role   = (string) ($_SESSION['user_role'] ?? 'Shift Leader');
 
+// የዲፓርትመንት ስም ከሌለ ከዳታቤዝ መፈለግ
 if ($dept_name === '' && $dept_id > 0) {
     $dn = $pdo->prepare('SELECT dept_name FROM departments WHERE id = ?');
     $dn->execute([$dept_id]);
     $dept_name = (string) ($dn->fetchColumn() ?: '');
 }
 
+// የ notifications ሰንጠረዥ 'is_read' ኮለምን እንዳለው በዳይናሚክ ማረጋገጥ
 $notifHasIsRead = (int) $pdo->query(
     "SELECT COUNT(*) FROM information_schema.COLUMNS
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications' AND COLUMN_NAME = 'is_read'"
 )->fetchColumn() > 0;
 
-// Fetch recipients
-$supervisors = []; $managers = [];
+// የሪፖርት ተቀባዮችን (ሱፐርቫይዘር እና ማናጀሮችን) መለየት
+$supervisors = []; 
+$managers = [];
 if ($dept_id > 0) {
     $rec = $pdo->prepare(
         "SELECT id, full_name, user_role FROM users
@@ -35,34 +46,45 @@ if ($dept_id > 0) {
     );
     $rec->execute([$dept_id]);
     foreach ($rec->fetchAll(PDO::FETCH_ASSOC) as $r) {
-        if ($r['user_role'] === 'Supervisor') $supervisors[] = $r; else $managers[] = $r;
+        if ($r['user_role'] === 'Supervisor') {
+            $supervisors[] = $r; 
+        } else {
+            $managers[] = $r;
+        }
     }
 }
 
-$success_msg = null; $error_msg = null;
+$success_msg = null; 
+$error_msg = null;
 
-// Handle POST
+// ፎርሙ POST ሲደረግ የሚሰራበት ክፍል
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_report'])) {
     $send_to = $_POST['send_to'] ?? [];
     $p = $_POST;
 
-    if (empty($send_to)) { $error_msg = 'ቢያንስ አንድ ተቀባይ ይምረጡ።'; }
-    elseif ($dept_id <= 0) { $error_msg = 'ዲፓርትመንት ያስፈልጋል።'; }
-    else {
+    if (empty($send_to)) { 
+        $error_msg = 'ቢያንስ አንድ ተቀባይ ይምረጡ።'; 
+    } elseif ($dept_id <= 0) { 
+        $error_msg = 'ዲፓርትመንት ያስፈልጋል።'; 
+    } else {
         try {
+            // ACID መርህን ለመጠበቅ Transaction መጀመር
             $pdo->beginTransaction();
 
             $placeholders = implode(',', array_fill(0, count($send_to), '?'));
             $vs = $pdo->prepare(
                 "SELECT id, full_name, user_role FROM users WHERE id IN ({$placeholders}) AND dept_id=? AND status='Active'"
             );
-            $params = array_map('intval', $send_to); $params[] = $dept_id;
+            $params = array_map('intval', $send_to); 
+            $params[] = $dept_id;
             $vs->execute($params);
             $valid = $vs->fetchAll(PDO::FETCH_ASSOC);
 
-            if (empty($valid)) { throw new RuntimeException('ተቀባይ አልተገኘም።'); }
+            if (empty($valid)) { 
+                throw new RuntimeException('ተቀባይ አልተገኘም።'); 
+            }
 
-            // Build structured report
+            // ሪፖርቱን በተዋቀረ መልኩ ማዘጋጀት (Structured Report Text)
             $shift_label = match($p['shift'] ?? '') {
                 'morning' => 'ጥዋት', 'afternoon' => 'ከሰዓት', 'night' => 'ሌሊት', default => $p['shift'] ?? ''
             };
@@ -94,6 +116,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_report'])) {
                 . "\n📋 ለቀጣይ ሽፍት መመሪያ:\n" . trim($p['handover'] ?? 'የለም') . "\n"
                 . (!empty($p['extra_comments']) ? "\n💬 ተጨማሪ: " . trim($p['extra_comments']) . "\n" : "");
 
+            // Insert the structured report into `daily_reports` (if table exists in DB)
+            $report_date = $p['report_date'] ?? date('Y-m-d');
+            $total_tasks = 0; $completed_tasks = 0; $blocked_tasks = 0;
+            try {
+                $cstmt = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND DATE(created_at) = ?");
+                $cstmt->execute([$dept_id, $report_date]);
+                $total_tasks = (int) $cstmt->fetchColumn();
+
+                $cstmt = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status = 'Completed' AND DATE(created_at) = ?");
+                $cstmt->execute([$dept_id, $report_date]);
+                $completed_tasks = (int) $cstmt->fetchColumn();
+
+                $cstmt = $pdo->prepare("SELECT COUNT(*) FROM maintenance_requests WHERE dept_id = ? AND status = 'Blocked' AND DATE(created_at) = ?");
+                $cstmt->execute([$dept_id, $report_date]);
+                $blocked_tasks = (int) $cstmt->fetchColumn();
+
+                $rin = $pdo->prepare("INSERT INTO daily_reports (dept_id, created_by, shift_type, report_summary, total_tasks, completed_tasks, blocked_tasks) VALUES (?,?,?,?,?,?,?)");
+                $rin->execute([$dept_id, $user_id, $p['shift'] ?? '', $report, $total_tasks, $completed_tasks, $blocked_tasks]);
+                $daily_report_id = (int) $pdo->lastInsertId();
+                // Append a small DR reference so downstream feedback can be associated
+                $report .= "\n\n[DRID:{$daily_report_id}]";
+            } catch (Throwable $e) {
+                // non-fatal — continue but log the issue
+                Database::log_action($pdo, $user_id, 'DAILY_REPORT_SAVE_FAILED', 'Failed saving daily_reports: ' . $e->getMessage());
+                $daily_report_id = 0;
+            }
+
+            // እንደ ሰንጠረዡ አወቃቀር ማሳወቂያን ማስገባት
             if ($notifHasIsRead) {
                 $ins = $pdo->prepare("INSERT INTO notifications (user_id, dept_id, message, type, is_read) VALUES (?,?,?,'daily_shift_summary',0)");
             } else {
@@ -101,15 +151,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_report'])) {
             }
 
             $names = [];
-            foreach ($valid as $r) { $ins->execute([(int)$r['id'], $dept_id, $report]); $names[] = $r['full_name'].' ('.$r['user_role'].')'; }
+            foreach ($valid as $r) {
+                $ins->execute([(int)$r['id'], $dept_id, $report]);
+                $names[] = $r['full_name'].' ('.$r['user_role'].')';
+            }
 
             $snippet = mb_substr($report, 0, 250) . '...';
-            log_action($pdo, $user_id, 'SHIFT_REPORT_SUBMIT', "Report sent to: " . implode(', ', $names) . ". Excerpt: {$snippet}");
+            
+            // ✅ መስተካከያ፦ በምዕራፍ አራት ዶክመንት መሠረት የ Static Method አጠራርን መጠቀም
+            Database::log_action($pdo, $user_id, 'SHIFT_REPORT_SUBMIT', "Report sent to: " . implode(', ', $names) . ". Excerpt: {$snippet}");
+            // Audit: REPORT_SUBMITTED (link to daily_reports record if available)
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                $details = sprintf('daily_report_id=%d; dept_id=%d; shift=%s; sent_to=%s', $daily_report_id, $dept_id, $p['shift'] ?? '', implode(',', array_map(fn($x)=>$x['id'],$valid)));
+                Database::log_system_activity($pdo, $user_id, 'REPORT_SUBMITTED', $details);
+            }
 
             $pdo->commit();
             $success_msg = 'ሪፖርቱ ተልኳል ለ: ' . implode(', ', $names);
         } catch (Throwable $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $error_msg = $e->getMessage();
         }
     }
@@ -117,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_report'])) {
 
 include __DIR__ . '/../includes/header_glass.php';
 $dept_display = $dept_name !== '' ? $dept_name : 'Department #' . $dept_id;
-$p = $_POST; // keep form data on error
+$p = $_POST; // ስህተት ቢኖር ፎርሙ ላይ የሞላው ዳታ እንዳይጠፋ ማቆያ
 ?>
 
 <div class="container-fluid py-4" style="max-width: 900px;">
@@ -139,7 +201,7 @@ $p = $_POST; // keep form data on error
     <?php endif; ?>
 
     <form method="post" action="">
-    <!-- ═══ 1. የሪፖርት መረጃ ═══ -->
+    
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-primary me-2">1</span>የሪፖርት መረጃ (Report Information)</div>
         <div class="card-body">
@@ -176,13 +238,12 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 2. ተቀባዮች ═══ -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-primary me-2">2</span>ተቀባዮች (Recipients)</div>
         <div class="card-body">
             <?php if (empty($managers) && empty($supervisors)): ?>
                 <div class="alert alert-warning py-2 mb-0">ማናጀር ወይም ሱፐርቫይዘር አልተገኘም።</div>
-            <?php else: ?>
+            <?php ?>
             <div class="row g-2">
                 <?php foreach ($managers as $m): ?>
                 <div class="col-md-6">
@@ -217,7 +278,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 3. የቀን ስራ ማጠቃለያ ═══ -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-primary me-2">3</span>የቀን ስራ ማጠቃለያ (Daily Work Summary)</div>
         <div class="card-body">
@@ -232,7 +292,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 4. የስራ አፈጻጸም ═══ -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-primary me-2">4</span>የስራ አፈጻጸም (Performance Status)</div>
         <div class="card-body">
@@ -251,9 +310,8 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 5. ችግሮች ═══ -->
     <div class="card border-0 shadow-sm mb-3">
-        <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-warning text-dark me-2">5</span>ችግኝ / ችግሮች (Issues Encountered)</div>
+        <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-warning text-dark me-2">5</span>የተፈጠሩ ችግሮች (Issues Encountered)</div>
         <div class="card-body">
             <div class="mb-3">
                 <label class="form-label small fw-bold">የተፈጠሩ ችግሮች</label>
@@ -266,7 +324,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 6. የጥራት ሁኔታ ═══ -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-primary me-2">6</span>የጥራት ሁኔታ (Quality Status)</div>
         <div class="card-body">
@@ -285,7 +342,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 7. የማሽን ሁኔታ ═══ -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-danger me-2">7</span>የማሽን ሁኔታ (Machine Status)</div>
         <div class="card-body">
@@ -308,7 +364,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 8. ለቀጣይ ሽፍት ═══ -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-primary me-2">8</span>ለቀጣይ ሽፍት መመሪያ (Handover Notes)</div>
         <div class="card-body">
@@ -316,7 +371,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 9. ተጨማሪ ═══ -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-secondary me-2">9</span>ተጨማሪ አስተያየት (Additional Comments)</div>
         <div class="card-body">
@@ -324,7 +378,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- ═══ 10. ፊርማ ═══ -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-white fw-semibold py-2"><span class="badge bg-dark me-2">10</span>ፊርማ (Signature)</div>
         <div class="card-body">
@@ -342,7 +395,6 @@ $p = $_POST; // keep form data on error
         </div>
     </div>
 
-    <!-- Submit -->
     <button type="submit" name="submit_report" value="1" class="btn btn-primary btn-lg w-100 mb-4 shadow"
         <?php echo (empty($managers) && empty($supervisors)) ? 'disabled' : ''; ?>>
         <i class="bi bi-send-fill me-2"></i>ሪፖርት ላክ / Submit Report

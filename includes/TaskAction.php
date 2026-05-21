@@ -62,13 +62,13 @@ class TaskAction {
         $stmt->execute([$dept_id]);
     }
     public function getMyTasks($user_id) {
-    $sql = "SELECT id, title, description, deadline, priority, status, created_at, machine_name, issue_description 
+    $sql = "SELECT id, title, description, deadline, priority, status, is_verified, feedback, created_at, machine_name, issue_description 
             FROM maintenance_requests 
             WHERE assigned_to = ? 
             ORDER BY created_at DESC";
     $stmt = $this->pdo->prepare($sql);
     $stmt->execute([$user_id]);
-    return $stmt->fetchAll();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 }
 

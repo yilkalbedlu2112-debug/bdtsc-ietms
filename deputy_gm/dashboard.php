@@ -2,6 +2,7 @@
 session_start();
 require_once '../includes/db.php';
 /** @var PDO $pdo */
+
 // የደህንነት ማረጋገጫ
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'Deputy General Manager') {
     header("Location: ../auth/login.php");
@@ -202,6 +203,8 @@ $gm_delegation = $gm_check->fetch();
 <script>
 let kpiChart;
 let lastEmergencyCount = 0;
+
+// 🛠️ የድምፅ ፋይል ፓዝ አስተማማኝ እንዲሆን ከ root ጀምሮ ተስተካክሏል
 const alertSound = new Audio('../assets/sounds/emergency.mp3'); 
 
 function initChart() {
@@ -226,10 +229,22 @@ function fetchLiveOverwatchData() {
             if (!data.success) return;
             document.getElementById('lastSync').textContent = data.timestamp;
             const alertBadge = document.getElementById('emergencyAlert');
-            if(data.emergency_count > 0) {
+            
+            // አዲስ የአደጋ ጊዜ ስራዎች መኖር አለመኖራቸውን መፈተሽ
+            const currentEmergencyCount = parseInt(data.emergency_count) || 0;
+            
+            if(currentEmergencyCount > 0) {
                 alertBadge.classList.remove('d-none');
-                document.getElementById('emergencyCount').textContent = data.emergency_count;
-            } else { alertBadge.classList.add('d-none'); }
+                document.getElementById('emergencyCount').textContent = currentEmergencyCount;
+                
+                // 🔊 አዲስ አደጋ ሲከሰት ብቻ ድምፅ እንዲያሰማ ማድረግ (Auto-play Restriction መከላከያ)
+                if (currentEmergencyCount > lastEmergencyCount) {
+                    alertSound.play().catch(e => console.log("Audio play blocked until user interacts with the page."));
+                }
+            } else { 
+                alertBadge.classList.add('d-none'); 
+            }
+            lastEmergencyCount = currentEmergencyCount;
 
             const rTotals = []; const rCompleted = [];
             ['Spinning', 'Weaving', 'Processing', 'Garment'].forEach(dept => {
@@ -249,7 +264,7 @@ function fetchLiveOverwatchData() {
         });
 }
 
-// Delegation Form AJAX (መድረሻው process_delegation.php ተደርጓል)
+// Delegation Form AJAX
 document.getElementById('dgmDelegateForm').addEventListener('submit', function(e) {
     e.preventDefault();
     fetch('process_delegation.php', { method: 'POST', body: new FormData(this) })

@@ -141,9 +141,28 @@ include '../includes/header_glass.php';
                                 </div>
 
                                 <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <?php
+                                            $statusBadge = 'secondary';
+                                            $statusText = htmlspecialchars($task['status']);
+                                            if ($task['status'] === 'Completed' && ($task['is_verified'] == 1 || $task['is_verified'] === '1')) {
+                                                $statusBadge = 'success';
+                                                $statusText = 'Approved by Shift Leader';
+                                            } elseif ($task['status'] === 'Completed' && ($task['is_verified'] == 0 || $task['is_verified'] === '0')) {
+                                                $statusBadge = 'warning';
+                                                $statusText = 'Awaiting Shift Leader Review';
+                                            } elseif (!empty($task['feedback'])) {
+                                                $statusBadge = 'danger';
+                                                $statusText = 'Returned / Needs Fix';
+                                            }
+                                        ?>
+                                        <span class="badge bg-<?= $statusBadge ?> bg-opacity-10 text-<?= $statusBadge === 'warning' ? 'dark' : $statusBadge ?> small">
+                                            <?= $statusText ?>
+                                        </span>
+                                    </div>
                                     <div class="dropdown">
                                         <button class="btn btn-light btn-sm border dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                            Status: <?= $task['status'] ?>
+                                            Status: <?= htmlspecialchars($task['status']) ?>
                                         </button>
                                         <ul class="dropdown-menu">
                                             <?php if($task['status'] == 'Pending'): ?>
@@ -220,6 +239,19 @@ function viewTaskDetails(taskId) {
     .then(data => {
         if(data.success) {
             const task = data.task;
+            let approvalHtml = '';
+            if (task.is_verified == 1 || task.is_verified === '1') {
+                approvalHtml = '<div class="col-12 mt-2"><strong>Approval:</strong> <span class="badge bg-success">Approved by Shift Leader</span></div>';
+            } else if (task.status === 'Completed') {
+                approvalHtml = '<div class="col-12 mt-2"><strong>Approval:</strong> <span class="badge bg-warning text-dark">Awaiting Review</span></div>';
+            } else if (task.feedback) {
+                approvalHtml = '<div class="col-12 mt-2"><strong>Approval:</strong> <span class="badge bg-danger">Not Approved</span></div>';
+            } else {
+                approvalHtml = '<div class="col-12 mt-2"><strong>Approval:</strong> <span class="badge bg-secondary">Not Reviewed</span></div>';
+            }
+
+            const feedbackHtml = task.feedback ? `<div class="col-12 mt-2"><strong>Feedback:</strong><div class="small bg-light p-2 rounded">${task.feedback}</div></div>` : '';
+
             const content = `
                 <h6 class="fw-bold">${task.title || 'No Title'}</h6>
                 <p class="text-muted small">${task.description || task.issue_description}</p>
@@ -227,6 +259,8 @@ function viewTaskDetails(taskId) {
                     <div class="col-6 small border-end"><strong>Status:</strong> ${task.status}</div>
                     <div class="col-6 small"><strong>Priority:</strong> ${task.priority}</div>
                     <div class="col-12 small border-top pt-2"><strong>Location:</strong> ${task.machine_name || 'N/A'}</div>
+                    ${approvalHtml}
+                    ${feedbackHtml}
                 </div>
             `;
             document.getElementById('taskDetailsContent').innerHTML = content;

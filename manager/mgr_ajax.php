@@ -53,10 +53,22 @@ try {
         }
 
         if($stmt->execute($insertParams)) {
-            
+            $newTaskId = (int) $pdo->lastInsertId();
+
+            // Audit: TASK_CREATED
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                $details = sprintf('task_id=%d; dept_id=%d; created_by=%d; title=%s', $newTaskId, $dept_id, $user_id, substr($title,0,200));
+                Database::log_system_activity($pdo, $user_id, 'TASK_CREATED', $details);
+            }
+
             if($assigned_to) {
                 $n = $pdo->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'task')");
                 $n->execute([$assigned_to, "You have been assigned a new task: $title"]);
+                // Audit: TASK_ASSIGNED
+                if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                    $details = sprintf('task_id=%d; old_assigned_to=null; new_assigned_to=%d; by=%d', $newTaskId, $assigned_to, $user_id);
+                    Database::log_system_activity($pdo, $user_id, 'TASK_ASSIGNED', $details);
+                }
             }
             echo json_encode(['success' => true, 'message' => 'Core Task created successfully']);
         } else {
@@ -110,8 +122,13 @@ try {
         $upd->execute([$user_id, $task_id]);
 
         $full_name = $_SESSION['full_name'] ?? 'Eng. Manager';
-        log_action($pdo, $user_id, 'Request Dispatched',
-            "Engineering Manager ($full_name) dispatched request #$task_id ({$task['machine_name']}) to In Progress.");
+        // Audit: TASK_DISPATCHED
+        if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+            $details = sprintf('task_id=%d; dispatched_by=%d; machine=%s', $task_id, $user_id, substr($task['machine_name'],0,200));
+            Database::log_system_activity($pdo, $user_id, 'TASK_DISPATCHED', $details);
+        } else {
+            log_action($pdo, $user_id, 'Request Dispatched', "Engineering Manager ($full_name) dispatched request #$task_id ({$task['machine_name']}) to In Progress.");
+        }
 
         echo json_encode(['success' => true, 'message' => 'Request dispatched successfully']);
     }

@@ -23,7 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $taskAction->updateStatus($task_id, $status, $user_id);
 
         if ($result['success']) {
-            log_action($pdo, $user_id, "Task Update", "Task #$task_id moved to $status");
+            $details = sprintf('task_id=%d; new_status=%s; updated_by=%d', $task_id, $status, $user_id);
+            if (class_exists('Database') && method_exists('Database', 'log_system_activity')) {
+                Database::log_system_activity($pdo, $user_id, 'TASK_STATUS_UPDATED', $details);
+            } else {
+                log_action($pdo, $user_id, "Task Update", "Task #$task_id moved to $status");
+            }
         }
         echo json_encode($result);
         exit();
