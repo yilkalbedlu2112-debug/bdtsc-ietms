@@ -122,18 +122,18 @@
         <p class="text-muted small"><?php echo __('industrial_task_management_system'); ?></p>
     </div>
 
-    <?php if (isset($_GET['success'])): ?>
-        <div class="alert alert-success py-2 mb-3 small border-0 shadow-sm rounded-3">
-            <i class="bi bi-check-circle-fill me-2"></i> <?php echo htmlspecialchars($_GET['success']); ?>
-        </div>
-    <?php endif; ?>
+    <?php if (isset($_GET['success'])) {
+        echo '<div class="alert alert-success py-2 mb-3 small border-0 shadow-sm rounded-3">'
+            . '<i class="bi bi-check-circle-fill me-2"></i> ' . htmlspecialchars($_GET['success'])
+            . '</div>';
+    }
 
-    <?php if (isset($_GET['error'])): ?>
-        <div class="alert alert-danger py-2 mb-3 small border-0 shadow-sm rounded-3">
-            <i class="bi bi-exclamation-circle-fill me-2"></i> <?php echo htmlspecialchars($_GET['error']); ?>
-        </div>
-    <?php endif; ?>
-    
+    if (isset($_GET['error'])) {
+        echo '<div class="alert alert-danger py-2 mb-3 small border-0 shadow-sm rounded-3">'
+            . '<i class="bi bi-exclamation-circle-fill me-2"></i> ' . htmlspecialchars($_GET['error'])
+            . '</div>';
+    }
+    ?>
     <form action="login_process.php" method="POST">
         <div class="mb-3">
             <label class="form-label small fw-bold text-secondary"><?php echo __('email'); ?></label>
