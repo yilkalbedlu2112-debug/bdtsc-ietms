@@ -1,1 +1,49 @@
+# ============================================
+# BDTSC-IETMS — Main .htaccess
+# ============================================
+
+# 1. Directory listing መከልከል (Security)
 Options -Indexes
+
+# 2. PHP version (Railway/shared host)
+AddType application/x-httpd-php .php
+
+# 3. Main routing — index.php ሁሉንም ያስተናግዳል
+RewriteEngine On
+
+# 4. HTTPS redirect (Railway ላይ አስፈላጊ)
+RewriteCond %{HTTP:X-Forwarded-Proto} =http
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 5. Real file/folder ካለ redirect አያስፈልግም
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# 6. ሁሉም request → index.php
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+
+# 7. Sensitive ፋይሎችን ማከልከል
+<FilesMatch "\.(sql|log|env|json|lock|md|toml|git)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# 8. includes/ folder ማከልከል
+<FilesMatch "^(db|functions|lang|assign_logic)\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# 9. Session security
+php_value session.cookie_httponly 1
+php_value session.cookie_secure 1
+php_value session.use_strict_mode 1
+
+# 10. Cache (assets ፈጣን ለማድረግ)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+</IfModule>
